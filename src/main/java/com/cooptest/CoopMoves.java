@@ -1,6 +1,8 @@
 package com.cooptest;
 
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -11,15 +13,22 @@ import com.mojang.logging.LogUtils;
 /**
  * Main mod entry point (Forge equivalent of the Fabric TestCoop ModInitializer).
  *
- * NOTE: This is the Stage 1 scaffold. Registrations for sounds/effects/items,
- * the network channel, server-side handlers and event subscriptions are added
- * in later stages. The original Fabric onInitialize() ordering is preserved in
- * commonSetup() as each subsystem is ported.
+ * The original Fabric onInitialize() ordering is reproduced here as each subsystem
+ * is ported. Registrations use DeferredRegister; server-side handlers and the
+ * network channel are wired in later stages inside commonSetup().
  */
 @Mod(CoopMoves.MOD_ID)
 public class CoopMoves {
 
+    /** Forge mod id (matches mods.toml). */
     public static final String MOD_ID = "coopmoves";
+    /**
+     * Content namespace used for all registry ids and assets. Kept identical to
+     * the Fabric mod (which used "testcoop" everywhere) so sound/effect/potion
+     * ids and asset paths do not change.
+     */
+    public static final String NAMESPACE = "testcoop";
+
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public CoopMoves() {
@@ -29,11 +38,12 @@ public class CoopMoves {
         CoopMovesConfig.load();
 
         // --- Deferred registries (Stage 2) ---
-        // ModSounds.SOUND_EVENTS.register(modEventBus);
-        // ModEffects.MOB_EFFECTS.register(modEventBus);
-        // MahitoItems.ITEMS.register(modEventBus);
+        ModSounds.SOUND_EVENTS.register(modEventBus);
+        ModEffects.MOB_EFFECTS.register(modEventBus);
+        MahitoItems.POTIONS.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::addCreativeTabItems);
 
         // Forge game event bus: tick, commands, interactions, damage, etc. (Stage 3+)
         MinecraftForge.EVENT_BUS.register(this);
@@ -47,5 +57,12 @@ public class CoopMoves {
             // --- Server-side handler registration (Stage 4), gated by CoopMovesConfig ---
             LOGGER.info("[CoopMoves] common setup complete");
         });
+    }
+
+    /** Adds the Mahito potion to the Food & Drink creative tab (Fabric: ItemGroupEvents on FOOD_AND_DRINK). */
+    private void addCreativeTabItems(final BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
+            event.accept(MahitoItems.createMahitoPotion());
+        }
     }
 }

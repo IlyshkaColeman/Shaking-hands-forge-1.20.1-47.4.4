@@ -1,0 +1,80 @@
+{
+  "epic_dap": {
+    "sounds": [
+      { "name": "testcoop:epic_dap", "stream": false }
+    ]
+  },
+  "explosion_impact": {
+    "sounds": [
+      { "name": "testcoop:explosion_impact", "stream": false }
+    ]
+  },
+  "mahito": {
+    "sounds": [
+      { "name": "testcoop:mahito", "stream": false }
+    ]
+  },
+  "galactic_dap": {
+    "sounds": [
+      { "name": "testcoop:galactic_dap", "stream": false }
+    ]
+  },
+  "true_friendship": {
+    "sounds": [
+      { "name": "testcoop:true_friendship", "stream": false }
+    ]
+  },
+  "impact": {
+    "sounds": [
+      { "name": "testcoop:impact", "stream": false }
+    ]
+  },
+  "mariojump": {
+    "sounds": [
+      { "name": "testcoop:mariojump", "stream": false }
+    ]
+  },
+  "fireimpact": {
+    "sounds": [
+      "testcoop:fireimpact"
+    ]
+  },
+  "dap.miss": {
+    "sounds": [
+      "testcoop:miss"
+    ],
+    "subtitle": "Dap missed"
+  },
+  "dap.weak": {
+    "sounds": [
+      "testcoop:dap1"
+    ],
+    "subtitle": "Weak dap"
+  },
+  "snap": {
+    "sounds": [
+      { "name": "testcoop:snap", "stream": false }
+    ]
+  },
+  "dap.hit": {
+    "sounds": [
+      "testcoop:dap_hit"
+    ],
+    "subtitle": "Dap hit"
+  },
+  "aura": {
+    "sounds": [
+      { "name": "testcoop:aura", "stream": false }
+    ],
+    "subtitle": "Aura"
+  },
+  "clap1": { "sounds": [{ "name": "testcoop:clap1", "stream": false }] },
+  "clap2": { "sounds": [{ "name": "testcoop:clap2", "stream": false }] },
+  "clap3": { "sounds": [{ "name": "testcoop:clap3", "stream": false }] },
+  "clap4": { "sounds": [{ "name": "testcoop:clap4", "stream": false }] },
+  "clap5": { "sounds": [{ "name": "testcoop:clap5", "stream": false }] },
+  "clap6": { "sounds": [{ "name": "testcoop:clap6", "stream": false }] },
+  "heli": { "sounds": [{ "name": "testcoop:heli", "stream": false }], "subtitle": "Helicopter spin" },
+  "cooldap": { "sounds": [{ "name": "testcoop:cooldap", "stream": false }] },
+  "slap": { "sounds": [{ "name": "testcoop:slap", "stream": false }] }
+}
