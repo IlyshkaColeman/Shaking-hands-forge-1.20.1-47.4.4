@@ -16,10 +16,21 @@ public final class ChargedDapClientHandler {
     private ChargedDapClientHandler() {}
 
     private static boolean inFaceDapSession = false;
+    private static boolean playerFrozen = false;
 
     public static void register() { }
 
     public static void cleanup(UUID playerId) { }
+
+    /** Set by ChargedDapHandler.PerfectDapFreezePayload (sit / perfect-dap freeze). */
+    public static void onPerfectDapFreeze(boolean frozen) {
+        playerFrozen = frozen;
+    }
+
+    /** Read by MovementFreezeMixin (Stage 5) to lock local movement. */
+    public static boolean isPlayerFrozen() {
+        return playerFrozen;
+    }
 
     public static void triggerDapBadBlock() { }
 

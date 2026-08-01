@@ -81,6 +81,8 @@ public class CoopMoves {
             if (cfg.enableCatch) {
                 FallCatchHandler.register();
             }
+            // /sit command (RegisterCommandsEvent). Not config-gated in the original.
+            SitHandler.register();
 
             LOGGER.info("[CoopMoves] common setup complete");
         });

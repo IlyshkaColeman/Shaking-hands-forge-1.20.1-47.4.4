@@ -51,6 +51,8 @@ public final class CoopServerTick {
         }
         // QTE engine (shared by dap combo / hug / huddle); cheap when idle.
         QTEManager.tick(server);
+        // Sit position enforcement (cheap when nobody is sitting).
+        SitHandler.tick(server);
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):

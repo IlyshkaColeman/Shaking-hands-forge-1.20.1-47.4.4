@@ -105,8 +105,13 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
   колбэки, окна нажатий. Тик — в `CoopServerTick` (безусловно, дёшев вхолостую).
   HUD-бар и `resolveKeyName` отложены (Этап 6). Триггеры придут с Dap-комбо / Hug.
 - [x] **Mahito** (`MahitoTrollHandler` + client) — готов, триггер из Dap.
-- [ ] `ChargedDapHandler` (ядро, ~180 КБ) — по кускам.
-- [ ] `PerfectDapFreezePayload` (заморозка) — примитив, нужен `SitHandler`.
+- [~] `ChargedDapHandler` — создан **shell**: `PerfectDapFreezePayload` (заморозка) +
+  query-заглушки (`isCharging`/`isInComboCooldown`/`isInBlockingAnimation` → false).
+  Ядро заряда/тиров/комбо/fire/heaven (~2400 строк) — по кускам далее.
+- [x] `PerfectDapFreezePayload` (заморозка) — готов (+ `ChargedDapClientHandler.isPlayerFrozen`).
+- [x] **Sit** (`SitHandler` + `SitClientHandler`) — `/sit`, поза+заморозка, помощь
+  «зажми F» рядом с сидящим → анимация подъёма. Реальный лок движения — с
+  `MovementFreezeMixin` (Этап 5); пока позицию удерживает серверный тик.
 - [ ] Dap-семья: Fusion / Meteor / Combo / Facing / Heaven / Hold / FallDap.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 

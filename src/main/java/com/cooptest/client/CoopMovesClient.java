@@ -36,6 +36,7 @@ public final class CoopMovesClient {
 
             // Stage 4 (self-contained mechanics)
             MarioJumpClientHandler.register();
+            SitClientHandler.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
