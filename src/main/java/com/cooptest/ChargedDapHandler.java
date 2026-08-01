@@ -5,6 +5,9 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -31,9 +34,18 @@ public final class ChargedDapHandler {
     // Consulted by other mechanics' guards. Return neutral values until the full
     // charged-dap state machine is ported (STAGE 4 — Dap core).
 
-    public static boolean isCharging(java.util.UUID playerId) { return false; }
-    public static boolean isInComboCooldown(java.util.UUID playerId) { return false; }
-    public static boolean isInBlockingAnimation(java.util.UUID playerId) { return false; }
+    public static boolean isCharging(UUID playerId) { return false; }
+    public static boolean isInComboCooldown(UUID playerId) { return false; }
+    public static boolean isInBlockingAnimation(UUID playerId) { return false; }
+
+    // ------------------------------------------------------------------ shared state
+    // Real charge/tier state lives here once the core lands; exposed early because
+    // sibling handlers (Facing / NormalFacing) already write cooldowns.
+
+    /** playerId -> dap cooldown expiry (ms). */
+    public static final Map<UUID, Long> cooldowns = new HashMap<>();
+
+    public static long cooldownMs() { return CoopMovesConfig.get().dapCooldownMs; }
 
     // ------------------------------------------------------------------ freeze primitive
 
@@ -53,8 +65,26 @@ public final class ChargedDapHandler {
         }
     }
 
+    /** S2C: facing-dap impact frame cue (client visual). */
+    public record FacingDapImpactPayload() {
+        public static void encode(FacingDapImpactPayload m, FriendlyByteBuf buf) { }
+        public static FacingDapImpactPayload decode(FriendlyByteBuf buf) { return new FacingDapImpactPayload(); }
+        public static void handle(FacingDapImpactPayload m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer()) {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onFacingDapImpact());
+                }
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
     public static void registerMessages() {
         CoopNetwork.register(PerfectDapFreezePayload.class,
                 PerfectDapFreezePayload::encode, PerfectDapFreezePayload::decode, PerfectDapFreezePayload::handle);
+        CoopNetwork.register(FacingDapImpactPayload.class,
+                FacingDapImpactPayload::encode, FacingDapImpactPayload::decode, FacingDapImpactPayload::handle);
     }
 }

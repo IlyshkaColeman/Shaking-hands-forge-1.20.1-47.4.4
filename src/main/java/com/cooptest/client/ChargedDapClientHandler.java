@@ -32,6 +32,9 @@ public final class ChargedDapClientHandler {
         return playerFrozen;
     }
 
+    /** STAGE 6: facing-dap impact frame flash. */
+    public static void onFacingDapImpact() { }
+
     public static void triggerDapBadBlock() { }
 
     public static void setInFaceDapSession(boolean active) {

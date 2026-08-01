@@ -114,8 +114,12 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
   `MovementFreezeMixin` (Этап 5); пока позицию удерживает серверный тик.
 - [x] `DapSession` + `DapSessionManager` — позиционирование двух игроков перед
   дапом (плавное сближение лицом друг к другу). Тик — в `CoopServerTick`.
+- [x] `HeavenDapPayloads` (4 S2C-сигнала) + `HeavenDapClientHandler` (stub, FX — Этап 6).
+- [x] `FacingDapHandler` — кинематографичный дап лицом-к-лицу с аурой (тик под enableDap).
+      Shell `ChargedDapHandler` дорос: `cooldowns`, `cooldownMs()`, `FacingDapImpactPayload`.
+- [ ] `NormalFacingDapHandler` — dap-loop (следующий; EntityInteract + Lightning + 2 пакета).
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья: Fusion / Meteor / Combo / Facing / Heaven / Hold / FallDap.
+- [ ] Dap-семья: Fusion / Meteor / Combo / Hold / FallDap.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

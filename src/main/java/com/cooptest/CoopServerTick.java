@@ -55,6 +55,9 @@ public final class CoopServerTick {
         SitHandler.tick(server);
         // Dap positioning sessions (cheap when none active).
         DapSessionManager.tick(server);
+        if (cfg.enableDap) {
+            FacingDapHandler.tick(server);
+        }
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):
