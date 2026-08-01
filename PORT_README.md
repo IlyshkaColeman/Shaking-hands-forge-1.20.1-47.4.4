@@ -112,6 +112,9 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 - [x] **Sit** (`SitHandler` + `SitClientHandler`) — `/sit`, поза+заморозка, помощь
   «зажми F» рядом с сидящим → анимация подъёма. Реальный лок движения — с
   `MovementFreezeMixin` (Этап 5); пока позицию удерживает серверный тик.
+- [x] `DapSession` + `DapSessionManager` — позиционирование двух игроков перед
+  дапом (плавное сближение лицом друг к другу). Тик — в `CoopServerTick`.
+- [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
 - [ ] Dap-семья: Fusion / Meteor / Combo / Facing / Heaven / Hold / FallDap.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 

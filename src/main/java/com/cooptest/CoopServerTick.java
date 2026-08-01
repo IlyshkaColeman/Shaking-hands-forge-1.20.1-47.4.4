@@ -53,6 +53,8 @@ public final class CoopServerTick {
         QTEManager.tick(server);
         // Sit position enforcement (cheap when nobody is sitting).
         SitHandler.tick(server);
+        // Dap positioning sessions (cheap when none active).
+        DapSessionManager.tick(server);
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):
