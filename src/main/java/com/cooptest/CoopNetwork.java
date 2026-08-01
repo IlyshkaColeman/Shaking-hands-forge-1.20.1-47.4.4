@@ -70,6 +70,8 @@ public final class CoopNetwork {
      * Populated as mechanics are ported in Stage 4.
      */
     public static void registerAll() {
-        // Stage 4: PoseNetworking.register(); GrabNetworking.register(); ... (fixed order)
+        // Order mirrors the Fabric TestCoop.onInitialize() registration order.
+        PoseNetworking.register();
+        // Stage 4: GrabNetworking.register(); HighFiveHandler.register(); ...
     }
 }

@@ -8,11 +8,22 @@
 - [x] Этап 1 — каркас проекта
 - [x] Этап 2 — реестры и ресурсы (звуки, эффекты, зелье, lang) — код готов; бинарные ассеты скопированы
 - [x] Этап 3 — сеть (общий SimpleChannel-канал CoopNetwork)
+- [x] Этап 7 (ядро) — анимации на KosmX: `CoopAnim` (слой) + `CoopAnimationHandler` (1914 строк, стейт-машина) + `PoseNetworking`
 - [ ] Этап 4 — механики (портируются юнитами: пакеты + серверная + клиентская логика + регистрация)
 - [ ] Этап 5 — миксины
-- [ ] Этап 6 — клиент (ввод, HUD, рендер)
-- [ ] Этап 7 — анимации (KosmX)
+- [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
 - [ ] Этап 8 — сборка и тесты
+
+## Заглушки (заполняются на следующих этапах)
+
+Эти классы созданы с настоящими сигнатурами, но пустыми телами, чтобы ядро
+компилировалось. Помечены в коде как `STAGE N STUB`:
+
+- `client/FirstPersonAnimationTest` — анимации рук от первого лица (Этап 6)
+- `client/ChargedDapClientHandler`, `client/DapHoldClientHandler` (Этап 4, Dap)
+- `client/HighFiveClientHandler`, `client/PushClientHandler`,
+  `client/MahitoClientHandler`, `client/FallDapClientHandler` (Этап 4)
+- `HighFiveHandler` — серверная часть (Этап 4)
 
 ## Как собрать (важно — прочитай)
 

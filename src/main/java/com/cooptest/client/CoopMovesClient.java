@@ -22,7 +22,10 @@ public final class CoopMovesClient {
             // KosmX per-player animation layer (foundation for CoopAnimationHandler)
             CoopAnim.registerFactory();
 
-            // Stage 4/6: PoseNetworking client receiver + all *ClientHandler.register()
+            // Animation state machine (client tick hook)
+            CoopAnimationHandler.register();
+
+            // Stage 4: remaining *ClientHandler.register() calls
             // Stage 6: keybinds, HUD overlays, world renderers
             CoopMoves.LOGGER.info("[CoopMoves] client setup complete");
         });
