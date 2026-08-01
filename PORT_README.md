@@ -121,8 +121,10 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       ординалы 81/84/85). Тик/ивент под enableDap.
 - [x] `MeteorStrikeHandler` (+ client stub) — метеор от perfect-legendary дапа
       (кратер/взрывы, 4 пакета, тик под enableDap). Grant зовётся ядром.
+- [x] `DapComboChain` — QTE-комбо после perfect-дапа (extend1/both/myboy, ординалы
+      43/44/45/47). Тик под enableDap+enableDapCombo. Триггер — ядро.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья: Fusion / Combo / Hold / FallDap / DivineFlam / FireSlap.
+- [ ] Dap-семья: Fusion / Hold / FallDap / DivineFlam / FireSlap / PerfectDapCombo.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
