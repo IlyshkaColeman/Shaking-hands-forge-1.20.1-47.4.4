@@ -79,6 +79,7 @@ public final class CoopNetwork {
         ClapHandler.registerMessages();
         PushInteractionHandler.registerMessages();
         KickHandler.registerMessages();
-        // Stage 4 (remaining): Dap family, Catch, Slap, Mahito ...
+        FallCatchHandler.registerMessages();
+        // Stage 4 (remaining): Dap family, Slap, Mahito ...
     }
 }

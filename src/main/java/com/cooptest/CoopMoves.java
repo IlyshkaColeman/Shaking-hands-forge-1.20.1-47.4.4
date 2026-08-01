@@ -78,6 +78,9 @@ public class CoopMoves {
             if (cfg.enableKick) {
                 KickHandler.register();
             }
+            if (cfg.enableCatch) {
+                FallCatchHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });
