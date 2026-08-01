@@ -28,6 +28,9 @@
   - [x] FallCatch (`FallCatchHandler` + `CatchClientHandler`) — ловец с поднятой
     рукой (R) рядом с падающим отменяет ему урон от падения
   - [ ] Slap — сервер (`SlapHandler`) уже смотрел; триггер — миксин на атаку (Этап 5)
+  - [x] Mahito (`MahitoTrollHandler` + `MahitoClientHandler`) — проклятие через дап
+    (эффект mahito), заморозка → «тролл-смерть». Триггер `checkForMahitoTroll`
+    зовётся из Dap (заработает после Dap-ядра). Крафт зелья — отложен (миксин, Этап 5)
   - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
 - [ ] Этап 5 — миксины
 - [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
@@ -83,9 +86,19 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
 `GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не
 портированные механики, помечены в коде `STAGE 4:` и временно убраны:
 - Spin / GroundPound (управление в полёте через Shift) — вернуть с группой Spin/GroundPound;
-- Kick (T когда свободен) — вернуть с `KickClientHandler`;
-- Clap (V когда не держишь) — вернуть с группой Clap.
+- [x] Kick (T когда свободен) — ВЕРНУТО (`KickClientHandler.handleKickTick`);
+- [x] Clap (V когда не держишь) — ВЕРНУТО.
 Ядро grab/throw/shield/escape/air/elytra перенесено полностью.
+
+## ⚠️ Dap-ядро — крупный отдельный подпроект
+
+`ChargedDapHandler` — **~180 КБ / ≈4000+ строк в одном файле** и центр всего
+Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также примитивы
+`PerfectDapFreezePayload` (заморозка) и завязка на `QTEManager`). От него зависят:
+`SitHandler` (freeze), `MahitoTrollHandler.checkForMahitoTroll` (триггер),
+остаток HighFive (Hug/Huddle/QTE). Переносить его нужно **по кускам** за несколько
+итераций (заряд/тиры → QTE → комбо → fire → heaven), заглушая forward-ссылки.
+Все самостоятельные механики уже перенесены и собираются; дальше — это ядро.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
 
