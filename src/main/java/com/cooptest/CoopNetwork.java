@@ -72,6 +72,8 @@ public final class CoopNetwork {
     public static void registerAll() {
         // Order mirrors the Fabric TestCoop.onInitialize() registration order.
         PoseNetworking.register();
-        // Stage 4: GrabNetworking.register(); HighFiveHandler.register(); ...
+        GrabNetworking.register();
+        GrabMechanic.ShieldModeMsg.register();
+        // Stage 4 (remaining): HighFive, Dap family, Push/Catch, Mahito ...
     }
 }

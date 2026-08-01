@@ -55,7 +55,14 @@ public class CoopMoves {
         event.enqueueWork(() -> {
             // --- Networking channel + message registration (order-sensitive) ---
             CoopNetwork.registerAll();
-            // --- Server-side handler registration (Stage 4), gated by CoopMovesConfig ---
+
+            // --- Server-side handlers, gated by config exactly like Fabric onInitialize() ---
+            CoopMovesConfig cfg = CoopMovesConfig.get();
+            if (cfg.enableGrab) {
+                GrabMechanic.registerShieldDamageEvent();
+                if (cfg.enableSpin) SpinHandler.register();
+            }
+
             LOGGER.info("[CoopMoves] common setup complete");
         });
     }
