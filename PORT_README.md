@@ -9,10 +9,81 @@
 - [x] Этап 2 — реестры и ресурсы (звуки, эффекты, зелье, lang) — код готов; бинарные ассеты скопированы
 - [x] Этап 3 — сеть (общий SimpleChannel-канал CoopNetwork)
 - [x] Этап 7 (ядро) — анимации на KosmX: `CoopAnim` (слой) + `CoopAnimationHandler` (1914 строк, стейт-машина) + `PoseNetworking`
-- [ ] Этап 4 — механики (портируются юнитами: пакеты + серверная + клиентская логика + регистрация)
+- [~] Этап 4 — механики:
+  - [x] Grab / Throw / Human Shield (`GrabMechanic`, `GrabNetworking`, `CoopServerTick`)
+  - [x] Grab: взаимодействие + клавиши + клиентские эффекты
+    (`GrabInteractionHandler`, `GrabInputHandler`, `GrabClientEffects`) —
+    первая **играбельная** механика, готова к тесту в игре
+  - [ ] HighFive / Hug / Huddle / QTE
+  - [ ] Dap-семейство (ChargedDap, Fusion, Meteor, Combo, Facing, Heaven, Hold, FallDap)
+  - [ ] Push / Catch / MarioJump / Kick / Slap / Clap
+  - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
 - [ ] Этап 5 — миксины
 - [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
 - [ ] Этап 8 — сборка и тесты
+
+## Проверено в игре (01.08.2026)
+
+Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
+Звуки играются (`/playsound testcoop:epic_dap player @s`) — реестр звуков и `.ogg`
+ассеты подтверждены. Реестры/конфиг/инициализация рабочие.
+
+**Grab теперь играбелен** (готов к тесту): ПКМ по игроку с поднятой рукой
+захватывает, клавиши R/T/V работают.
+
+### Как тестировать Grab (нужно 2 игрока / 2 клиента)
+- **R** — поднять руку (grab ready). Второй игрок жмёт ПКМ по тебе → он тебя держит.
+  Повторное **R** у держащего — бросить (drop).
+- **T** (удерживать) — зарядка броска, отпустить — YEET. Заряд даёт звук/тряску.
+- **V** — переключить режим «живой щит» (пока держишь кого-то).
+- **Shift** (когда тебя держат) — вырваться (escape).
+- В полёте после броска: **WASD** — воздушный контроль, **Space** с элитрами — буст.
+
+### Что осталось от оригинального `GrabInputHandler` (вернётся позже)
+`GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не
+портированные механики, помечены в коде `STAGE 4:` и временно убраны:
+- Spin / GroundPound (управление в полёте через Shift) — вернуть с группой Spin/GroundPound;
+- Kick (T когда свободен) — вернуть с `KickClientHandler`;
+- Clap (V когда не держишь) — вернуть с группой Clap.
+Ядро grab/throw/shield/escape/air/elytra перенесено полностью.
+
+## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
+
+Порядок, в котором продолжать Этап 4 — брать класс из оригинального репо
+`Anteryo/Dap-ur-homie` (ветка main) и портировать по уже отработанному шаблону:
+
+1. ✅ ГОТОВО — `GrabInteractionHandler` + `GrabInputHandler` + `GrabClientEffects`.
+   Первая играбельная механика (захват/бросок). Регистрация: сервер —
+   `CoopMoves.commonSetup` (под `enableGrab`); клиент — `CoopMovesClient`
+   (`onClientSetup` + `onRegisterKeyMappings`).
+2. Группа HighFive: `HighFiveHandler` (заменить STUB), `HighFiveHugHandler`,
+   `HighFiveQTEHugHandler`, `HuddleHandler`, `QTEManager` + QTE-пакеты.
+3. Dap-семейство: `ChargedDapHandler`, `DapSessionManager`, `DapComboChain`,
+   `DapFusionHandler`, `MeteorStrikeHandler`, `PerfectDapComboHandler`,
+   `FacingDapHandler`, `NormalFacingDapHandler`, `DapHoldHandler`, `FallDapHandler`,
+   `HeavenDapPayloads`, `SitHandler`.
+4. `PushInteractionHandler` (заменить STUB), `FallCatchHandler`, `MarioJumpHandler`,
+   `KickHandler`, `SlapHandler`, `ClapHandler`, `SpinHandler` (STUB),
+   `GroundPoundHandler`.
+5. Mahito + вспомогательные: `MahitoTrollHandler`, `MahitoCraftingHandler`,
+   `AnimationTickHandler`, `LaunchedPlayerTracker`, `CarryingSlowdown`,
+   `PlayerCleanupHandler`, `DebugQTECommand`.
+6. Этап 5 — 11 миксинов (перенацелить на 1.20.1 + Mojmap, добавить в
+   `coopmoves.mixins.json`, который сейчас с пустыми списками).
+7. Этап 6 — keybinds (`RegisterKeyMappingsEvent`), HUD (`RegisterGuiOverlaysEvent`),
+   `TrajectoryRenderer` (`RenderLevelStageEvent`), impact-frames, шейдеры,
+   наполнить `FirstPersonAnimationTest`.
+
+### Шаблон переноса (уже отработан)
+
+- Регистрация пакета: добавить в `CoopNetwork.registerAll()` (порядок важен —
+  id пакетов должны совпадать на клиенте и сервере).
+- Сообщение: `record` + статические `encode/decode/handle`, серверная ветка через
+  `c.getSender()`, клиентская — **только** через `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, ...)`
+  с вызовом класса из пакета `client` (иначе краш на выделенном сервере).
+- Серверные тики добавлять в `CoopServerTick`.
+- Клиентские `register()` — в `CoopMovesClient.onClientSetup`.
+- Анимации: `CoopAnim.play(player, ID)` / `CoopAnim.stop(player)`.
 
 ## Заглушки (заполняются на следующих этапах)
 

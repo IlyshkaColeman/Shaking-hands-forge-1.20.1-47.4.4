@@ -25,6 +25,8 @@ public final class GrabClientState {
     public static final Map<UUID, UUID> heldBy = new HashMap<>();
     /** holders currently in human-shield mode */
     public static final Set<UUID> shieldMode = new HashSet<>();
+    /** client-tracked throw-charge progress per player (0..1) */
+    public static final Map<UUID, Float> chargeProgress = new HashMap<>();
 
     public static void setGrabState(UUID holder, UUID held, boolean start) {
         if (start) {
@@ -34,6 +36,7 @@ public final class GrabClientState {
             holding.remove(holder);
             heldBy.remove(held);
             shieldMode.remove(holder);
+            chargeProgress.remove(holder);
         }
     }
 
@@ -46,9 +49,28 @@ public final class GrabClientState {
         return shieldMode.contains(holder);
     }
 
+    /** True if the given player is currently holding someone (client mirror). */
+    public static boolean isHolding(UUID playerUuid) {
+        return holding.containsKey(playerUuid);
+    }
+
+    /** True if the given player is currently being held (client mirror). */
+    public static boolean isBeingHeld(UUID playerUuid) {
+        return heldBy.containsKey(playerUuid);
+    }
+
+    public static void setChargeProgress(UUID playerUuid, float progress) {
+        chargeProgress.put(playerUuid, progress);
+    }
+
+    public static float getChargeProgress(UUID playerUuid) {
+        return chargeProgress.getOrDefault(playerUuid, 0f);
+    }
+
     public static void clear() {
         holding.clear();
         heldBy.clear();
         shieldMode.clear();
+        chargeProgress.clear();
     }
 }

@@ -60,6 +60,7 @@ public class CoopMoves {
             CoopMovesConfig cfg = CoopMovesConfig.get();
             if (cfg.enableGrab) {
                 GrabMechanic.registerShieldDamageEvent();
+                GrabInteractionHandler.register();
                 if (cfg.enableSpin) SpinHandler.register();
             }
 

@@ -1,7 +1,9 @@
 package com.cooptest.client;
 
 import com.cooptest.CoopMoves;
+import com.cooptest.GrabInputHandler;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -25,9 +27,19 @@ public final class CoopMovesClient {
             // Animation state machine (client tick hook)
             CoopAnimationHandler.register();
 
+            // Stage 4 (Grab group): client input + juice
+            GrabInputHandler.register();
+            GrabClientEffects.register();
+
             // Stage 4: remaining *ClientHandler.register() calls
-            // Stage 6: keybinds, HUD overlays, world renderers
+            // Stage 6: HUD overlays, world renderers
             CoopMoves.LOGGER.info("[CoopMoves] client setup complete");
         });
+    }
+
+    /** Keybind registration must happen on the mod event bus (client dist). */
+    @SubscribeEvent
+    public static void onRegisterKeyMappings(final RegisterKeyMappingsEvent event) {
+        GrabInputHandler.registerKeyBindings(event);
     }
 }
