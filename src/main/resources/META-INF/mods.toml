@@ -11,8 +11,7 @@ authors="${mod_authors}"
 description='''
 ${mod_description}
 '''
-# logoFile re-added in Stage 2 together with assets/icon.png
-# logoFile="icon.png"
+logoFile="icon.png"
 
 [[dependencies.${mod_id}]]
     modId="forge"

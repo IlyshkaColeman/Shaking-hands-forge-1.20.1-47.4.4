@@ -1,0 +1,26 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"hold_shield": {
+			"loop": true,
+			"bones": {
+				"right_arm": {
+					"rotation": {
+						"vector": [-114.4623, -17.2476, -5.6328]
+					},
+					"position": {
+						"vector": [0, -1, -4]
+					}
+				},
+				"left_arm": {
+					"rotation": {
+						"vector": [-16.7004, -32.1367, -8.0517]
+					},
+					"position": {
+						"vector": [0, -1, 1]
+					}
+				}
+			}
+		}
+	}
+}

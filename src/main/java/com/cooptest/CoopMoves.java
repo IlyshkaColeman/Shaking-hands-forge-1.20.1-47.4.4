@@ -53,7 +53,8 @@ public class CoopMoves {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            // --- Networking (Stage 3): CoopNetwork.register(); ---
+            // --- Networking channel + message registration (order-sensitive) ---
+            CoopNetwork.registerAll();
             // --- Server-side handler registration (Stage 4), gated by CoopMovesConfig ---
             LOGGER.info("[CoopMoves] common setup complete");
         });
