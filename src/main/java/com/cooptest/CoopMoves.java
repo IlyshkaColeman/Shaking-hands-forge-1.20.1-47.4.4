@@ -63,6 +63,9 @@ public class CoopMoves {
                 GrabInteractionHandler.register();
                 if (cfg.enableSpin) SpinHandler.register();
             }
+            if (cfg.enableHighFive) {
+                HighFiveHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });

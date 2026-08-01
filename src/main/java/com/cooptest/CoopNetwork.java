@@ -74,6 +74,7 @@ public final class CoopNetwork {
         PoseNetworking.register();
         GrabNetworking.register();
         GrabMechanic.ShieldModeMsg.register();
-        // Stage 4 (remaining): HighFive, Dap family, Push/Catch, Mahito ...
+        HighFiveHandler.registerMessages();
+        // Stage 4 (remaining): Dap family, Push/Catch, Mahito ...
     }
 }

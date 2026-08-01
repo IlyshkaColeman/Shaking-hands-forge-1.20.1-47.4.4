@@ -31,6 +31,9 @@ public final class CoopMovesClient {
             GrabInputHandler.register();
             GrabClientEffects.register();
 
+            // Stage 4 (HighFive group): client input + feedback
+            HighFiveClientHandler.register();
+
             // Stage 4: remaining *ClientHandler.register() calls
             // Stage 6: HUD overlays, world renderers
             CoopMoves.LOGGER.info("[CoopMoves] client setup complete");
@@ -41,5 +44,6 @@ public final class CoopMovesClient {
     @SubscribeEvent
     public static void onRegisterKeyMappings(final RegisterKeyMappingsEvent event) {
         GrabInputHandler.registerKeyBindings(event);
+        HighFiveClientHandler.registerKeyBindings(event);
     }
 }

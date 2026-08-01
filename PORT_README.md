@@ -14,7 +14,10 @@
   - [x] Grab: взаимодействие + клавиши + клиентские эффекты
     (`GrabInteractionHandler`, `GrabInputHandler`, `GrabClientEffects`) —
     первая **играбельная** механика, готова к тесту в игре
-  - [ ] HighFive / Hug / Huddle / QTE
+  - [~] HighFive — **базовый** High Five готов (`HighFiveHandler`,
+    `HighFiveClientHandler`): H поднять руку → соединение в радиусе →
+    тир-эффект (0–3) по скорости. Combo/Sike/Hug/Huddle/QTE — отложены (STAGE).
+  - [ ] Hug / Huddle / QTE (остаток группы HighFive)
   - [ ] Dap-семейство (ChargedDap, Fusion, Meteor, Combo, Facing, Heaven, Hold, FallDap)
   - [ ] Push / Catch / MarioJump / Kick / Slap / Clap
   - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
@@ -39,6 +42,12 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
 - **Shift** (когда тебя держат) — вырваться (escape).
 - В полёте после броска: **WASD** — воздушный контроль, **Space** с элитрами — буст.
 
+### Как тестировать High Five (2 игрока)
+- **H** (руки пустые) — поднять руку (держится 2.5 с, иначе «left hanging»).
+- Оба игрока с поднятой рукой на расстоянии ≤1.6 блока → соединение,
+  тир 0–3 по максимальной недавней скорости (беги/прыгай перед хлопком для тира повыше).
+- Combo (H+H после хлопка), Sike (ПКМ+H), Hug/Huddle/QTE — пока не работают (STAGE).
+
 ### Что осталось от оригинального `GrabInputHandler` (вернётся позже)
 `GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не
 портированные механики, помечены в коде `STAGE 4:` и временно убраны:
@@ -56,7 +65,8 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
    Первая играбельная механика (захват/бросок). Регистрация: сервер —
    `CoopMoves.commonSetup` (под `enableGrab`); клиент — `CoopMovesClient`
    (`onClientSetup` + `onRegisterKeyMappings`).
-2. Группа HighFive: `HighFiveHandler` (заменить STUB), `HighFiveHugHandler`,
+2. Группа HighFive — **база готова** (`HighFiveHandler` + `HighFiveClientHandler`,
+   клавиша H). Остаток группы (перевести дальше): `HighFiveHugHandler`,
    `HighFiveQTEHugHandler`, `HuddleHandler`, `QTEManager` + QTE-пакеты.
 3. Dap-семейство: `ChargedDapHandler`, `DapSessionManager`, `DapComboChain`,
    `DapFusionHandler`, `MeteorStrikeHandler`, `PerfectDapComboHandler`,

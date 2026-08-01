@@ -28,6 +28,9 @@ public final class CoopServerTick {
             GrabMechanic.tick(server);
             if (cfg.enableSpin) SpinHandler.tick(server);
         }
+        if (cfg.enableHighFive) {
+            HighFiveHandler.tick(server);
+        }
         // Stage 4 (Dap family):
         // if (cfg.enableDap) { ChargedDapHandler.checkTickSpeedRestore(server);
         //                      QTEManager.tick(server);
