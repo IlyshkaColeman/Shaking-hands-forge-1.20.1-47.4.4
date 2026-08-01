@@ -7,7 +7,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -105,11 +104,10 @@ public final class ClapHandler {
                         away = away.normalize();
                         animal.setDeltaMovement(away.x * 0.55, 0.35, away.z * 0.55);
                         animal.hurtMarked = true;
-                        if (animal instanceof Mob mob) {
-                            mob.setTarget(null);
-                            Vec3 fleeTarget = animal.position().add(away.scale(8.0));
-                            mob.getNavigation().moveTo(fleeTarget.x, fleeTarget.y, fleeTarget.z, 1.4);
-                        }
+                        // Animal already extends Mob, so use it directly (no instanceof).
+                        animal.setTarget(null);
+                        Vec3 fleeTarget = animal.position().add(away.scale(8.0));
+                        animal.getNavigation().moveTo(fleeTarget.x, fleeTarget.y, fleeTarget.z, 1.4);
                     });
         }
 
