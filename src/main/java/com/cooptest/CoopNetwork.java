@@ -75,6 +75,8 @@ public final class CoopNetwork {
         GrabNetworking.register();
         GrabMechanic.ShieldModeMsg.register();
         HighFiveHandler.registerMessages();
+        MarioJumpHandler.registerMessages();
+        ClapHandler.registerMessages();
         // Stage 4 (remaining): Dap family, Push/Catch, Mahito ...
     }
 }

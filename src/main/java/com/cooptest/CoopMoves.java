@@ -66,6 +66,12 @@ public class CoopMoves {
             if (cfg.enableHighFive) {
                 HighFiveHandler.register();
             }
+            if (cfg.enableMarioJump) {
+                MarioJumpHandler.register();
+            }
+            if (cfg.enableClap) {
+                ClapHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });

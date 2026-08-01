@@ -19,7 +19,9 @@
     тир-эффект (0–3) по скорости. Combo/Sike/Hug/Huddle/QTE — отложены (STAGE).
   - [ ] Hug / Huddle / QTE (остаток группы HighFive)
   - [ ] Dap-семейство (ChargedDap, Fusion, Meteor, Combo, Facing, Heaven, Hold, FallDap)
-  - [ ] Push / Catch / MarioJump / Kick / Slap / Clap
+  - [x] MarioJump (`MarioJumpHandler` + client) — прыжок на голову = отскок
+  - [x] Clap (`ClapHandler`) — клавиша V (руки пусты), тиры slow/spam/strong, синк, испуг животных
+  - [ ] Push / Catch / Kick / Slap (остаток пункта 4)
   - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
 - [ ] Этап 5 — миксины
 - [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
@@ -47,6 +49,13 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
 - Оба игрока с поднятой рукой на расстоянии ≤1.6 блока → соединение,
   тир 0–3 по максимальной недавней скорости (беги/прыгай перед хлопком для тира повыше).
 - Combo (H+H после хлопка), Sike (ПКМ+H), Hug/Huddle/QTE — пока не работают (STAGE).
+
+### Как тестировать MarioJump / Clap
+- **MarioJump**: встань на голову другого игрока и нажми **пробел** → отскок вверх
+  («WAHOO!» / «BONK!»), звук mariojump.
+- **Clap**: с пустыми руками жми **V** (когда никого не держишь). Быстрые
+  повторные нажатия повышают тир (slow → spam → strong). Сильный клап (tier 2)
+  распугивает животных в радиусе 15 блоков; двое рядом в окне 0.3 с → «синк»-клап.
 
 ### Что осталось от оригинального `GrabInputHandler` (вернётся позже)
 `GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не

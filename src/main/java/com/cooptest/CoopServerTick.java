@@ -31,6 +31,12 @@ public final class CoopServerTick {
         if (cfg.enableHighFive) {
             HighFiveHandler.tick(server);
         }
+        if (cfg.enableMarioJump) {
+            MarioJumpHandler.tick(server);
+        }
+        if (cfg.enableClap) {
+            ClapHandler.tick(server);
+        }
         // Stage 4 (Dap family):
         // if (cfg.enableDap) { ChargedDapHandler.checkTickSpeedRestore(server);
         //                      QTEManager.tick(server);

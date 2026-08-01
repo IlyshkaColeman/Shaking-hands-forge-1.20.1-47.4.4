@@ -136,8 +136,20 @@ public final class GrabInputHandler {
         if (isShieldKeyPressed && !wasShieldKeyPressed) {
             if (isHolding) {
                 GrabNetworking.sendShieldToggle();
+            } else {
+                // Clap when free-handed and not mid-interaction.
+                // STAGE 4: ChargedDapClientHandler.isLocalPlayerCharging() guard
+                // returns with the Dap family.
+                boolean blocked = isBeingHeld
+                        || pose == PoseState.GRAB_READY
+                        || pose == PoseState.PUSH_IDLE
+                        || com.cooptest.client.HighFiveClientHandler.isLocalPlayerInHighFive();
+                if (!blocked && com.cooptest.CoopMovesConfig.get().enableClap
+                        && player.getMainHandItem().isEmpty()) {
+                    com.cooptest.client.FirstPersonAnimationTest.showBothHands();
+                    com.cooptest.ClapHandler.sendClapRequest();
+                }
             }
-            // STAGE 4: else -> Clap (ClapHandler) once the Clap group is ported.
         }
         wasShieldKeyPressed = isShieldKeyPressed;
 

@@ -34,6 +34,11 @@ public final class CoopMovesClient {
             // Stage 4 (HighFive group): client input + feedback
             HighFiveClientHandler.register();
 
+            // Stage 4 (self-contained mechanics)
+            MarioJumpClientHandler.register();
+            // Clap has no dedicated client handler — it is triggered from
+            // GrabInputHandler (V) and animated via CoopAnimationHandler.
+
             // Stage 4: remaining *ClientHandler.register() calls
             // Stage 6: HUD overlays, world renderers
             CoopMoves.LOGGER.info("[CoopMoves] client setup complete");
