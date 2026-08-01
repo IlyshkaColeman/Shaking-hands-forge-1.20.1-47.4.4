@@ -81,6 +81,7 @@ public final class CoopNetwork {
         KickHandler.registerMessages();
         FallCatchHandler.registerMessages();
         MahitoTrollHandler.registerMessages();
+        QTEManager.registerMessages();
         // Stage 4 (remaining): Dap family, Slap ...
     }
 }

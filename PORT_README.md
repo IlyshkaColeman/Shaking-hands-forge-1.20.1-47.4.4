@@ -100,6 +100,16 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 итераций (заряд/тиры → QTE → комбо → fire → heaven), заглушая forward-ссылки.
 Все самостоятельные механики уже перенесены и собираются; дальше — это ядро.
 
+### Уже перенесено из Dap-кластера (фундамент)
+- [x] **QTE-система** (`QTEManager` + `QTEClientHandler`, 3 сообщения) — стейджи,
+  колбэки, окна нажатий. Тик — в `CoopServerTick` (безусловно, дёшев вхолостую).
+  HUD-бар и `resolveKeyName` отложены (Этап 6). Триггеры придут с Dap-комбо / Hug.
+- [x] **Mahito** (`MahitoTrollHandler` + client) — готов, триггер из Dap.
+- [ ] `ChargedDapHandler` (ядро, ~180 КБ) — по кускам.
+- [ ] `PerfectDapFreezePayload` (заморозка) — примитив, нужен `SitHandler`.
+- [ ] Dap-семья: Fusion / Meteor / Combo / Facing / Heaven / Hold / FallDap.
+- [ ] Остаток HighFive: Hug / QTEHug / Huddle.
+
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
 
 Порядок, в котором продолжать Этап 4 — брать класс из оригинального репо

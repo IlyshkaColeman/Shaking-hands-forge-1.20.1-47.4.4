@@ -49,6 +49,8 @@ public final class CoopServerTick {
         if (cfg.enableMahito) {
             MahitoTrollHandler.tick(server);
         }
+        // QTE engine (shared by dap combo / hug / huddle); cheap when idle.
+        QTEManager.tick(server);
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):
