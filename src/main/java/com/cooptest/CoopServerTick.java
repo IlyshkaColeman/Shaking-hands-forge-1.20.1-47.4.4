@@ -58,6 +58,7 @@ public final class CoopServerTick {
         if (cfg.enableDap) {
             FacingDapHandler.tick(server);
             NormalFacingDapHandler.tick(server);
+            MeteorStrikeHandler.tick(server);
         }
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);

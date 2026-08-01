@@ -119,8 +119,10 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       Shell `ChargedDapHandler` дорос: `cooldowns`, `cooldownMs()`, `FacingDapImpactPayload`.
 - [x] `NormalFacingDapHandler` — dap-loop (EntityInteract + LightningBolt + 2 пакета,
       ординалы 81/84/85). Тик/ивент под enableDap.
+- [x] `MeteorStrikeHandler` (+ client stub) — метеор от perfect-legendary дапа
+      (кратер/взрывы, 4 пакета, тик под enableDap). Grant зовётся ядром.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья: Fusion / Meteor / Combo / Hold / FallDap.
+- [ ] Dap-семья: Fusion / Combo / Hold / FallDap / DivineFlam / FireSlap.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

@@ -86,6 +86,7 @@ public final class CoopNetwork {
         SitHandler.registerMessages();
         HeavenDapPayloads.registerMessages();
         NormalFacingDapHandler.registerMessages();
+        MeteorStrikeHandler.registerMessages();
         // Stage 4 (remaining): Dap family (charge/tier/combo/fire/heaven), Slap ...
     }
 }
