@@ -72,6 +72,9 @@ public class CoopMoves {
             if (cfg.enableClap) {
                 ClapHandler.register();
             }
+            if (cfg.enablePush) {
+                PushInteractionHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });

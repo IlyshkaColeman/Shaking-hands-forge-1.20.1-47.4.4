@@ -21,7 +21,9 @@
   - [ ] Dap-семейство (ChargedDap, Fusion, Meteor, Combo, Facing, Heaven, Hold, FallDap)
   - [x] MarioJump (`MarioJumpHandler` + client) — прыжок на голову = отскок
   - [x] Clap (`ClapHandler`) — клавиша V (руки пусты), тиры slow/spam/strong, синк, испуг животных
-  - [ ] Push / Catch / Kick / Slap (остаток пункта 4)
+  - [x] Push (`PushInteractionHandler` + `PushClientHandler`) — Shift+ПКМ зарядка,
+    партнёр ПКМ = запуск вверх; + `LaunchedPlayerTracker`, `PoseEffects`
+  - [ ] Catch / Kick / Slap (остаток пункта 4)
   - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
 - [ ] Этап 5 — миксины
 - [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
@@ -56,6 +58,12 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
 - **Clap**: с пустыми руками жми **V** (когда никого не держишь). Быстрые
   повторные нажатия повышают тир (slow → spam → strong). Сильный клап (tier 2)
   распугивает животных в радиусе 15 блоков; двое рядом в окне 0.3 с → «синк»-клап.
+
+### Как тестировать Push (2 игрока)
+- Присядь (**Shift**) и **ПКМ** по игроку рядом (≤2.5 блока), держи ~1.5 с →
+  «Tell homie to right-click!».
+- Партнёр жмёт **ПКМ** по тебе → его подбрасывает вверх (в потолок не пробьёт).
+- Прыжок прямо перед запуском (окно 0.8 с) даёт максимальную высоту.
 
 ### Что осталось от оригинального `GrabInputHandler` (вернётся позже)
 `GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не

@@ -37,6 +37,11 @@ public final class CoopServerTick {
         if (cfg.enableClap) {
             ClapHandler.tick(server);
         }
+        if (cfg.enablePush) {
+            PushInteractionHandler.tick(server);
+        }
+        // Launch-trail particles for pushed / kicked / launched players.
+        LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):
         // if (cfg.enableDap) { ChargedDapHandler.checkTickSpeedRestore(server);
         //                      QTEManager.tick(server);
