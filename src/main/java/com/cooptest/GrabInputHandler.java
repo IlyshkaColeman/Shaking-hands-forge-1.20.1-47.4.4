@@ -168,6 +168,7 @@ public final class GrabInputHandler {
         boolean justThrowPressed = isThrowKeyPressed && !wasThrowKeyPressed;
         boolean justThrowReleased = !isThrowKeyPressed && wasThrowKeyPressed;
         if (isHolding) {
+            com.cooptest.client.KickClientHandler.cancelIfCharging();
             if (justThrowPressed) {
                 isChargingThrow = true;
                 throwChargeStartTime = System.currentTimeMillis();
@@ -199,7 +200,15 @@ public final class GrabInputHandler {
                 lastSentChargeProgress = -1f;
                 isChargingThrow = false;
             }
-            // STAGE 4: KickClientHandler.handleKickTick(...) when free (Kick group).
+            // Kick / drop-kick when free-handed (T). Slap shares this key but is
+            // triggered server-side via an attack mixin (Stage 5).
+            boolean canKick = !player.isPassenger() && pose == PoseState.NONE;
+            if (canKick) {
+                com.cooptest.client.KickClientHandler.handleKickTick(
+                        client, isThrowKeyPressed, player.isSprinting());
+            } else {
+                com.cooptest.client.KickClientHandler.cancelIfCharging();
+            }
         }
         wasThrowKeyPressed = isThrowKeyPressed;
 

@@ -78,6 +78,7 @@ public final class CoopNetwork {
         MarioJumpHandler.registerMessages();
         ClapHandler.registerMessages();
         PushInteractionHandler.registerMessages();
-        // Stage 4 (remaining): Dap family, Catch, Mahito ...
+        KickHandler.registerMessages();
+        // Stage 4 (remaining): Dap family, Catch, Slap, Mahito ...
     }
 }

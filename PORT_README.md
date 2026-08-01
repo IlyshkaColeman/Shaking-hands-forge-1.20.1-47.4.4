@@ -23,7 +23,10 @@
   - [x] Clap (`ClapHandler`) — клавиша V (руки пусты), тиры slow/spam/strong, синк, испуг животных
   - [x] Push (`PushInteractionHandler` + `PushClientHandler`) — Shift+ПКМ зарядка,
     партнёр ПКМ = запуск вверх; + `LaunchedPlayerTracker`, `PoseEffects`
-  - [ ] Catch / Kick / Slap (остаток пункта 4)
+  - [x] Kick / DropKick (`KickHandler` + `KickClientHandler`) — T (руки пусты):
+    тап = пинок, зажатие в спринте = заряд дроп-кика. HUD-бар отложен (Этап 6).
+  - [ ] Slap — сервер (`SlapHandler`) уже смотрел; триггер — миксин на атаку (Этап 5)
+  - [ ] Catch (остаток пункта 4)
   - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
 - [ ] Этап 5 — миксины
 - [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
@@ -64,6 +67,11 @@ Mod loads on Forge 47.4.4 / MC 1.20.1, KosmX playeranimator dependency resolves.
   «Tell homie to right-click!».
 - Партнёр жмёт **ПКМ** по тебе → его подбрасывает вверх (в потолок не пробьёт).
 - Прыжок прямо перед запуском (окно 0.8 с) даёт максимальную высоту.
+
+### Как тестировать Kick
+- С пустыми руками **тапни T** рядом с игроком/мобом → пинок с отбросом.
+- **Спринт + зажать T** ~3 с → заряд, отпусти = дроп-кик (сильный отброс/урон,
+  «двойной» эффект если цель одна). Кулдаун 2 с.
 
 ### Что осталось от оригинального `GrabInputHandler` (вернётся позже)
 `GrabInputHandler` перенесён в **урезанном** виде — ветки, зовущие ещё не

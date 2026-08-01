@@ -75,6 +75,9 @@ public class CoopMoves {
             if (cfg.enablePush) {
                 PushInteractionHandler.register();
             }
+            if (cfg.enableKick) {
+                KickHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });
