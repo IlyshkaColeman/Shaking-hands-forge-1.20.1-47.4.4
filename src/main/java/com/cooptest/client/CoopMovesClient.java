@@ -19,9 +19,11 @@ public final class CoopMovesClient {
     @SubscribeEvent
     public static void onClientSetup(final FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            // Stage 3: PoseNetworking client receiver + all *ClientHandler.register()
+            // KosmX per-player animation layer (foundation for CoopAnimationHandler)
+            CoopAnim.registerFactory();
+
+            // Stage 4/6: PoseNetworking client receiver + all *ClientHandler.register()
             // Stage 6: keybinds, HUD overlays, world renderers
-            // Stage 7: KosmX animation handlers
             CoopMoves.LOGGER.info("[CoopMoves] client setup complete");
         });
     }
