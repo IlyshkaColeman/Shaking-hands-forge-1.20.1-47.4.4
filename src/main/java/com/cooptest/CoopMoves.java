@@ -83,6 +83,9 @@ public class CoopMoves {
             }
             // /sit command (RegisterCommandsEvent). Not config-gated in the original.
             SitHandler.register();
+            if (cfg.enableDap) {
+                NormalFacingDapHandler.register();
+            }
 
             LOGGER.info("[CoopMoves] common setup complete");
         });

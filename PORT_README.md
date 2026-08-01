@@ -117,7 +117,8 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 - [x] `HeavenDapPayloads` (4 S2C-сигнала) + `HeavenDapClientHandler` (stub, FX — Этап 6).
 - [x] `FacingDapHandler` — кинематографичный дап лицом-к-лицу с аурой (тик под enableDap).
       Shell `ChargedDapHandler` дорос: `cooldowns`, `cooldownMs()`, `FacingDapImpactPayload`.
-- [ ] `NormalFacingDapHandler` — dap-loop (следующий; EntityInteract + Lightning + 2 пакета).
+- [x] `NormalFacingDapHandler` — dap-loop (EntityInteract + LightningBolt + 2 пакета,
+      ординалы 81/84/85). Тик/ивент под enableDap.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
 - [ ] Dap-семья: Fusion / Meteor / Combo / Hold / FallDap.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
