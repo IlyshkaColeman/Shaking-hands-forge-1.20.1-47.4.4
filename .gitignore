@@ -1,0 +1,16 @@
+# gradle
+.gradle/
+build/
+run/
+out/
+
+# forge / fg
+*.launch
+*.classpath
+*.project
+.settings/
+.idea/
+*.iml
+
+# generated
+src/generated/resources/.cache/
