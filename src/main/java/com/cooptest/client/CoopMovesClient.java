@@ -37,6 +37,8 @@ public final class CoopMovesClient {
             // Stage 4 (self-contained mechanics)
             MarioJumpClientHandler.register();
             SitClientHandler.register();
+            // Stage 4 (Dap family): charge (G) / fire-combo (J) input
+            ChargedDapClientHandler.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
@@ -51,5 +53,6 @@ public final class CoopMovesClient {
     public static void onRegisterKeyMappings(final RegisterKeyMappingsEvent event) {
         GrabInputHandler.registerKeyBindings(event);
         HighFiveClientHandler.registerKeyBindings(event);
+        ChargedDapClientHandler.registerKeyBindings(event);
     }
 }

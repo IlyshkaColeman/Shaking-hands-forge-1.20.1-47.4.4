@@ -56,6 +56,7 @@ public final class CoopServerTick {
         // Dap positioning sessions (cheap when none active).
         DapSessionManager.tick(server);
         if (cfg.enableDap) {
+            ChargedDapHandler.tick(server);
             FacingDapHandler.tick(server);
             NormalFacingDapHandler.tick(server);
             MeteorStrikeHandler.tick(server);
