@@ -90,6 +90,7 @@ public final class CoopNetwork {
         DivineFlamCombo.registerMessages();
         DapFusionHandler.registerMessages();
         FallDapHandler.registerMessages();
-        // Stage 4 (remaining): Dap family (charge/tier/combo/fire/heaven), Slap ...
+        DapHoldHandler.registerMessages();
+        // Stage 4 (remaining): DapFusionHandler(full), ChargedDapHandler core, Slap ...
     }
 }

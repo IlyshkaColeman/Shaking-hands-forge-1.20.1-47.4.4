@@ -133,8 +133,10 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       stub). Полный fusion (~1200 строк) — отдельным проходом.
 - [x] `FallDapHandler` (+ client) — заряд дапа в падении (20+ блоков) → сквош-дайв,
       приземление на игрока = сквош на 25 с (2 пакета, тик под enableFallDap).
+- [x] `DapHoldHandler` (+ client) — hold-J dapping loop + групповой дап (10 пакетов,
+      armor-stand «руки», тик под enableDapHold). Триггер — tryDetect из ядра.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Гиганты: полный `DapFusionHandler` (51КБ) / `DapHoldHandler` (38КБ).
+- [ ] Гигант: полный `DapFusionHandler` (51КБ).
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

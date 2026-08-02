@@ -66,6 +66,9 @@ public final class CoopServerTick {
         if (cfg.enableFallDap) {
             FallDapHandler.tick(server);
         }
+        if (cfg.enableDapHold) {
+            DapHoldHandler.tick(server);
+        }
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):
