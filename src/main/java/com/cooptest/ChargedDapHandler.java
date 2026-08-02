@@ -45,6 +45,9 @@ public final class ChargedDapHandler {
     /** playerId -> dap cooldown expiry (ms). */
     public static final Map<UUID, Long> cooldowns = new HashMap<>();
 
+    /** playerId -> fire-dap charge level (0..1); consulted by FireSlapHandler. */
+    public static final Map<UUID, Float> fireLevel = new HashMap<>();
+
     public static long cooldownMs() { return CoopMovesConfig.get().dapCooldownMs; }
 
     // ------------------------------------------------------------------ freeze primitive

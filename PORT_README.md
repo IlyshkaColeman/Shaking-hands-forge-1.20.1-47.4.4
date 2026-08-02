@@ -123,8 +123,13 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       (кратер/взрывы, 4 пакета, тик под enableDap). Grant зовётся ядром.
 - [x] `DapComboChain` — QTE-комбо после perfect-дапа (extend1/both/myboy, ординалы
       43/44/45/47). Тик под enableDap+enableDapCombo. Триггер — ядро.
+- [x] `FireSlapHandler` — при полном fire-заряде удар по мобу поджигает/отбрасывает
+      (AttackEntityEvent, читает `fireLevel`). Shell дорос `fireLevel`.
+- [x] `DivineFlamCombo` (+ client stub) — fire-комбо (J вдвоём) → вихрь пламени
+      (2 пакета, тик под enableDap). Триггер — fire-dap ядра.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья: Fusion / Hold / FallDap / DivineFlam / FireSlap / PerfectDapCombo.
+- [ ] Dap-семья остаток: PerfectDapComboHandler / DapFusionHandler(51КБ) /
+      DapHoldHandler(38КБ) / FallDapHandler.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

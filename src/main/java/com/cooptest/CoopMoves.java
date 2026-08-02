@@ -85,6 +85,8 @@ public class CoopMoves {
             SitHandler.register();
             if (cfg.enableDap) {
                 NormalFacingDapHandler.register();
+                DivineFlamCombo.register();
+                FireSlapHandler.register();
             }
 
             LOGGER.info("[CoopMoves] common setup complete");
