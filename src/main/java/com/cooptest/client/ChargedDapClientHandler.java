@@ -6,10 +6,15 @@ import com.cooptest.CoopNetwork;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -22,14 +27,17 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Charged-dap client input + light client state. Ported to Forge 1.20.1.
+ * Charged-dap client input + HUD. Ported to Forge 1.20.1.
  *
- * The dap charge is a held key (default G) with an empty main hand: press sends
- * {@link ChargedDapHandler.ChargeStartMsg}, release sends
- * {@link ChargedDapHandler.ChargeReleaseMsg}. A second key (default J) sends
- * {@link ChargedDapHandler.FireDapJPressMsg} for the fire-dap combo. Charge/fire
- * progress and heaven-ready flags arrive via S2C and are stored here for a future
- * HUD overlay; the full charge-bar/QTE HUD is not yet ported.
+ * Input: G (empty-hand hold) charges/releases the dap; J presses the fire-dap combo.
+ * HUD (Forge {@link IGuiOverlay}, registered in CoopMovesClient): the center charge
+ * bar with fire overcharge + heaven-ready shake/crack, partner mini-bars, the whiff
+ * cooldown bar, the "PRESS J!" fire-combo prompt, and the tier result flash + tier
+ * particles.
+ *
+ * The Fabric texture-based cinematic impact frames (perfect/facing/drop-kick full
+ * screen flashes) are omitted pending their GUI textures; they are not part of the
+ * gameplay HUD.
  */
 @OnlyIn(Dist.CLIENT)
 public final class ChargedDapClientHandler {
@@ -42,14 +50,33 @@ public final class ChargedDapClientHandler {
     private static boolean wasDapKeyDown = false;
     private static boolean wasFireKeyDown = false;
     private static boolean localCharging = false;
+    private static long localChargeStartTime = 0;
 
     private static boolean inFaceDapSession = false;
     private static boolean playerFrozen = false;
 
-    /** Charge progress broadcast from server, keyed by player. */
+    private static long whiffCooldownEnd = 0;
+
+    private static boolean inFireComboWindow = false;
+    private static long fireComboWindowStart = 0;
+    private static final long FIRE_COMBO_WINDOW_MS = 2200;
+
+    private static long flashStartTime = 0;
+    private static int resultTier = 0;
+    private static boolean resultPerfect = false;
+
+    private static long heavenReadyStartTime = 0;
+
+    private static final long CHARGE_TIME_MS = 250;
+    private static final long FLASH_DURATION = 500;
+
+    /** Charge / fire progress broadcast from server, keyed by player (present == charging). */
     public static final Map<UUID, Float> chargeProgress = new HashMap<>();
     public static final Map<UUID, Float> fireProgress = new HashMap<>();
     public static final Set<UUID> heavenReady = new HashSet<>();
+
+    /** HUD overlay instance (registered from CoopMovesClient). */
+    public static final IGuiOverlay HUD = (gui, g, partial, w, h) -> renderHud(g, w, h);
 
     // -------------------------------------------------------------- registration
     public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
@@ -72,11 +99,19 @@ public final class ChargedDapClientHandler {
         if (player == null) return;
         if (!CoopMovesConfig.get().enableDap) return;
 
+        boolean onCooldown = System.currentTimeMillis() < whiffCooldownEnd;
+
         // --- Dap charge (G): press to charge, release to dap ---
         boolean dapDown = dapKey.isDown();
         if (dapDown && !wasDapKeyDown) {
-            if (player.getMainHandItem().isEmpty()) {
+            if (onCooldown) {
+                long remaining = (whiffCooldownEnd - System.currentTimeMillis()) / 100;
+                player.displayClientMessage(Component.literal("§cDap on cooldown! " + (remaining / 10.0) + "s"), true);
+            } else if (!player.getMainHandItem().isEmpty()) {
+                player.displayClientMessage(Component.literal("§cMain hand must be empty for charged dap!"), true);
+            } else {
                 localCharging = true;
+                localChargeStartTime = System.currentTimeMillis();
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeStartMsg());
             }
         } else if (!dapDown && wasDapKeyDown) {
@@ -85,14 +120,21 @@ public final class ChargedDapClientHandler {
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeReleaseMsg());
             }
         }
+        if (localCharging && onCooldown) localCharging = false;
         wasDapKeyDown = dapDown;
 
-        // --- Fire combo (J) ---
+        // --- Fire combo (J): only meaningful inside the window ---
         boolean fireDown = fireComboKey.isDown();
         if (fireDown && !wasFireKeyDown) {
-            CoopNetwork.sendToServer(new ChargedDapHandler.FireDapJPressMsg());
+            if (inFireComboWindow) {
+                CoopNetwork.sendToServer(new ChargedDapHandler.FireDapJPressMsg());
+                inFireComboWindow = false;
+            }
         }
         wasFireKeyDown = fireDown;
+
+        if (inFireComboWindow && System.currentTimeMillis() - fireComboWindowStart > FIRE_COMBO_WINDOW_MS)
+            inFireComboWindow = false;
     }
 
     public static boolean isLocalPlayerCharging() { return localCharging; }
@@ -111,24 +153,187 @@ public final class ChargedDapClientHandler {
         } else {
             chargeProgress.remove(playerId);
             fireProgress.remove(playerId);
-        }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && mc.player.getUUID().equals(playerId) && !charging) {
-            localCharging = false;
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null && mc.player.getUUID().equals(playerId)) localCharging = false;
         }
     }
 
     public static void onHeavenReady(UUID playerId, boolean ready) {
-        if (ready) heavenReady.add(playerId); else heavenReady.remove(playerId);
+        if (ready) {
+            heavenReady.add(playerId);
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null && mc.player.getUUID().equals(playerId)) heavenReadyStartTime = System.currentTimeMillis();
+        } else {
+            heavenReady.remove(playerId);
+        }
     }
 
+    public static void onWhiffCooldown(long durationMs) {
+        whiffCooldownEnd = System.currentTimeMillis() + durationMs;
+        localCharging = false;
+    }
+
+    public static void onFireDapWindow() {
+        inFireComboWindow = true;
+        fireComboWindowStart = System.currentTimeMillis();
+    }
+
+    public static void onDapResult(double x, double y, double z, UUID p1, UUID p2, int tier, boolean perfect) {
+        Minecraft mc = Minecraft.getInstance();
+        localCharging = false;
+        chargeProgress.clear();
+        fireProgress.clear();
+        if (mc.player != null) {
+            UUID myId = mc.player.getUUID();
+            if (myId.equals(p1) || myId.equals(p2)) {
+                flashStartTime = System.currentTimeMillis();
+                resultTier = tier;
+                resultPerfect = perfect;
+            }
+        }
+        spawnTierParticles(mc, x, y, z, tier, perfect);
+    }
+
+    private static void spawnTierParticles(Minecraft mc, double x, double y, double z, int tier, boolean perfect) {
+        if (mc.level == null) return;
+        ParticleOptions particle;
+        int count;
+        switch (tier) {
+            case 0 -> { particle = ParticleTypes.SMOKE; count = 5; }
+            case 1 -> { particle = ParticleTypes.CRIT; count = 10; }
+            case 2 -> { particle = ParticleTypes.HAPPY_VILLAGER; count = 15; }
+            case 3 -> { particle = ParticleTypes.ENCHANT; count = 20; }
+            case 4 -> { particle = ParticleTypes.TOTEM_OF_UNDYING; count = 25; }
+            case 5 -> { particle = ParticleTypes.FLAME; count = 30; }
+            default -> { particle = ParticleTypes.CRIT; count = 5; }
+        }
+        for (int i = 0; i < count; i++) {
+            mc.level.addParticle(particle,
+                    x + (Math.random() - 0.5) * 0.5, y + (Math.random() - 0.5) * 0.5, z + (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.3, Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
+        }
+        if (perfect) {
+            for (int i = 0; i < 8; i++) {
+                double angle = (i / 8.0) * Math.PI * 2;
+                mc.level.addParticle(ParticleTypes.ENCHANT, x + Math.cos(angle) * 0.3, y + 0.5, z + Math.sin(angle) * 0.3, 0, 0.1, 0);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------- HUD
+    private static void renderHud(GuiGraphics g, int screenWidth, int screenHeight) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        long now = System.currentTimeMillis();
+        UUID myId = mc.player.getUUID();
+
+        // result flash
+        long sinceFlash = now - flashStartTime;
+        if (sinceFlash < FLASH_DURATION) {
+            float progress = (float) sinceFlash / FLASH_DURATION;
+            int baseAlpha = switch (resultTier) {
+                case 1 -> 40; case 2 -> 50; case 3 -> 60; case 4 -> 80; case 5 -> 100; default -> 30;
+            };
+            if (resultPerfect) baseAlpha = Math.min(baseAlpha + 40, 140);
+            int alpha = (int) ((1.0f - progress) * baseAlpha);
+            int rgb = switch (resultTier) {
+                case 1 -> 0xFFFF00; case 2 -> 0x00FF00; case 3 -> 0xFFAA00;
+                case 4 -> 0xFF00FF; case 5 -> 0xFF4400; default -> 0x888888;
+            };
+            g.fill(0, 0, screenWidth, screenHeight, (alpha << 24) | rgb);
+        }
+
+        boolean onCooldown = now < whiffCooldownEnd;
+
+        // whiff cooldown bar
+        if (onCooldown && !localCharging) {
+            float cooldownProgress = (whiffCooldownEnd - now) / 800f;
+            int barWidth = 40, barHeight = 3;
+            int barX = (screenWidth - barWidth) / 2, barY = screenHeight / 2 + 20;
+            g.fill(barX - 1, barY - 1, barX + barWidth + 1, barY + barHeight + 1, 0x44000000);
+            g.fill(barX, barY, barX + (int) (barWidth * cooldownProgress), barY + barHeight, 0xBBFF0000);
+        }
+
+        // fire-dap "PRESS J!" prompt
+        if (inFireComboWindow) {
+            long elapsed = now - fireComboWindowStart;
+            if (FIRE_COMBO_WINDOW_MS - elapsed > 0) {
+                String text = "§c§l🔥 PRESS J! 🔥";
+                int textWidth = mc.font.width(text);
+                int textX = (screenWidth - textWidth) / 2, textY = screenHeight / 2 + 10;
+                float pulse = (float) (Math.sin(now / 80.0) * 0.4 + 0.6);
+                int alpha = (int) (pulse * 255);
+                float timeProgress = (float) elapsed / FIRE_COMBO_WINDOW_MS;
+                int color = timeProgress < 0.5f ? (alpha << 24) | 0xFF8800 : (alpha << 24) | 0xFF0000;
+                g.drawString(mc.font, text, textX, textY, color, true);
+                int barWidth = 100, barHeight = 3;
+                int barX = (screenWidth - barWidth) / 2, barY = textY + 12;
+                g.fill(barX, barY, barX + barWidth, barY + barHeight, 0x80000000);
+                int barColor = timeProgress < 0.5f ? 0xFFFF8800 : 0xFFFF0000;
+                g.fill(barX, barY, barX + (int) (barWidth * (1.0f - timeProgress)), barY + barHeight, barColor);
+            }
+        }
+
+        // main charge bar
+        if (localCharging && !onCooldown) {
+            long elapsed = now - localChargeStartTime;
+            float chargePercent = Math.min(1.0f, (float) elapsed / CHARGE_TIME_MS);
+            float myFire = CoopMovesConfig.get().enableFireDap ? fireProgress.getOrDefault(myId, 0f) : 0f;
+            boolean isHeavenReady = heavenReady.contains(myId);
+
+            int barWidth = 40, barHeight = 3;
+            int barX = (screenWidth - barWidth) / 2, barY = screenHeight / 2 + 20;
+            g.fill(barX - 1, barY - 1, barX + barWidth + 1, barY + barHeight + 1, 0x44000000);
+
+            if (myFire > 0.05f) {
+                g.fill(barX, barY, barX + (int) (barWidth * chargePercent), barY + barHeight, 0xBB00FF00);
+                int redWidth = (int) (barWidth * myFire);
+                if (isHeavenReady) {
+                    long since = now - heavenReadyStartTime;
+                    int sx = (int) ((Math.random() - 0.5) * 8), sy = (int) ((Math.random() - 0.5) * 6);
+                    int col = (since % 500 < 250) ? 0xFFFF00FF : 0xDDFF2200;
+                    g.fill(barX + sx, barY + sy, barX + redWidth + sx, barY + barHeight + sy, col);
+                    g.fill(barX - 5 + sx, barY + 1 + sy, barX + barWidth + 5 + sx, barY + 2 + sy, 0xFFFFFFFF);
+                } else if (myFire >= 0.99f) {
+                    int sx = (int) ((Math.random() - 0.5) * 4), sy = (int) ((Math.random() - 0.5) * 2);
+                    g.fill(barX + sx, barY + sy, barX + redWidth + sx, barY + barHeight + sy, 0xDDFF2200);
+                } else {
+                    g.fill(barX, barY, barX + redWidth, barY + barHeight, 0xDDFF2200);
+                }
+            } else {
+                int fillColor = chargePercent >= 0.99f ? 0xBB00FF00 : 0xBBFFAA00;
+                g.fill(barX, barY, barX + (int) (barWidth * chargePercent), barY + barHeight, fillColor);
+            }
+
+            // partner mini-bars
+            int partnerY = barY + 8;
+            for (Map.Entry<UUID, Float> entry : chargeProgress.entrySet()) {
+                if (entry.getKey().equals(myId)) continue;
+                boolean inRange = false;
+                if (mc.level != null) {
+                    var p = mc.level.getPlayerByUUID(entry.getKey());
+                    if (p != null && mc.player.distanceTo(p) <= 20.0) inRange = true;
+                }
+                if (!inRange) continue;
+                float partnerCharge = entry.getValue();
+                float partnerFire = fireProgress.getOrDefault(entry.getKey(), 0f);
+                int pW = 30, pH = 2, pX = (screenWidth - pW) / 2;
+                g.fill(pX - 1, partnerY - 1, pX + pW + 1, partnerY + pH + 1, 0x33000000);
+                int pColor = partnerFire > 0.1f ? 0xAAFF4400 : (partnerCharge >= 0.99f ? 0xAA00FF00 : 0xAAFFAA00);
+                g.fill(pX, partnerY, pX + (int) (pW * partnerCharge), partnerY + pH, pColor);
+                partnerY += 6;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------- misc state
     /** Set by ChargedDapHandler.PerfectDapFreezePayload (sit / perfect-dap freeze). */
     public static void onPerfectDapFreeze(boolean frozen) { playerFrozen = frozen; }
 
     /** Read by MovementFreezeMixin (Stage 5) to lock local movement. */
     public static boolean isPlayerFrozen() { return playerFrozen; }
 
-    /** STAGE 6: facing-dap impact frame flash. */
+    /** STAGE 6: facing-dap impact frame flash (texture VFX not yet ported). */
     public static void onFacingDapImpact() { }
 
     public static void triggerDapBadBlock() { }

@@ -251,6 +251,57 @@ public final class ChargedDapHandler {
         }
     }
 
+    /** S2C: whiff cooldown started (client shows the red cooldown bar). */
+    public record WhiffCooldownMsg(long durationMs) {
+        public static void encode(WhiffCooldownMsg m, FriendlyByteBuf buf) { buf.writeLong(m.durationMs); }
+        public static WhiffCooldownMsg decode(FriendlyByteBuf buf) { return new WhiffCooldownMsg(buf.readLong()); }
+        public static void handle(WhiffCooldownMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onWhiffCooldown(m.durationMs()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
+    /** S2C: fire-dap combo window opened (client shows "PRESS J!"). */
+    public record FireDapWindowMsg() {
+        public static void encode(FireDapWindowMsg m, FriendlyByteBuf buf) { }
+        public static FireDapWindowMsg decode(FriendlyByteBuf buf) { return new FireDapWindowMsg(); }
+        public static void handle(FireDapWindowMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onFireDapWindow());
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
+    /** S2C: a dap resolved (client flash + tier particles). */
+    public record DapResultMsg(double x, double y, double z, UUID p1, UUID p2, int tier, boolean perfectHit) {
+        public static void encode(DapResultMsg m, FriendlyByteBuf buf) {
+            buf.writeDouble(m.x); buf.writeDouble(m.y); buf.writeDouble(m.z);
+            buf.writeUUID(m.p1); buf.writeUUID(m.p2); buf.writeInt(m.tier); buf.writeBoolean(m.perfectHit);
+        }
+        public static DapResultMsg decode(FriendlyByteBuf buf) {
+            return new DapResultMsg(buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                    buf.readUUID(), buf.readUUID(), buf.readInt(), buf.readBoolean());
+        }
+        public static void handle(DapResultMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onDapResult(m.x(), m.y(), m.z(), m.p1(), m.p2(), m.tier(), m.perfectHit()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
     public static void registerMessages() {
         CoopNetwork.register(PerfectDapFreezePayload.class,
                 PerfectDapFreezePayload::encode, PerfectDapFreezePayload::decode, PerfectDapFreezePayload::handle);
@@ -266,6 +317,12 @@ public final class ChargedDapHandler {
                 ChargeSyncMsg::encode, ChargeSyncMsg::decode, ChargeSyncMsg::handle);
         CoopNetwork.register(HeavenReadyMsg.class,
                 HeavenReadyMsg::encode, HeavenReadyMsg::decode, HeavenReadyMsg::handle);
+        CoopNetwork.register(WhiffCooldownMsg.class,
+                WhiffCooldownMsg::encode, WhiffCooldownMsg::decode, WhiffCooldownMsg::handle);
+        CoopNetwork.register(FireDapWindowMsg.class,
+                FireDapWindowMsg::encode, FireDapWindowMsg::decode, FireDapWindowMsg::handle);
+        CoopNetwork.register(DapResultMsg.class,
+                DapResultMsg::encode, DapResultMsg::decode, DapResultMsg::handle);
     }
 
     /** Registers the EntityInteract dap-detect (Fabric UseEntityCallback). */
@@ -826,6 +883,9 @@ public final class ChargedDapHandler {
         }
 
         scheduledParticles.add(new ScheduledParticles(world, dapPos.x, dapPos.y, dapPos.z, System.currentTimeMillis() + 800));
+
+        DapResultMsg result = new DapResultMsg(dapPos.x, dapPos.y, dapPos.z, p1.getUUID(), p2.getUUID(), tier, perfectHit);
+        for (ServerPlayer other : world.getServer().getPlayerList().getPlayers()) CoopNetwork.sendToPlayer(other, result);
     }
 
     private static int calculateTier(float avgCharge, double combinedSpeed, float avgFire, float fire1, float fire2) {
@@ -1076,6 +1136,8 @@ public final class ChargedDapHandler {
         p1.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 200, 255, false, false));
         p2.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 255, false, false));
         p2.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 200, 255, false, false));
+        CoopNetwork.sendToPlayer(p1, new FireDapWindowMsg());
+        CoopNetwork.sendToPlayer(p2, new FireDapWindowMsg());
     }
 
     private static void onFireDapJPress(ServerPlayer player) {
@@ -1360,6 +1422,7 @@ public final class ChargedDapHandler {
 
     public static void broadcastWhiffCooldown(ServerPlayer player, long cooldownEnd) {
         if (player == null) return;
+        CoopNetwork.sendToPlayer(player, new WhiffCooldownMsg(whiffCooldownMs()));
         PoseNetworking.broadcastAnimState(player, ANIM_NONE);
     }
 

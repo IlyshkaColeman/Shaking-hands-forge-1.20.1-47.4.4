@@ -3,6 +3,7 @@ package com.cooptest.client;
 import com.cooptest.CoopMoves;
 import com.cooptest.GrabInputHandler;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -54,5 +55,11 @@ public final class CoopMovesClient {
         GrabInputHandler.registerKeyBindings(event);
         HighFiveClientHandler.registerKeyBindings(event);
         ChargedDapClientHandler.registerKeyBindings(event);
+    }
+
+    /** HUD overlays (mod event bus, client dist). */
+    @SubscribeEvent
+    public static void onRegisterOverlays(final RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
     }
 }
