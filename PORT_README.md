@@ -135,8 +135,11 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       приземление на игрока = сквош на 25 с (2 пакета, тик под enableFallDap).
 - [x] `DapHoldHandler` (+ client) — hold-J dapping loop + групповой дап (10 пакетов,
       armor-stand «руки», тик под enableDapHold). Триггер — tryDetect из ядра.
-- [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Гигант: полный `DapFusionHandler` (51КБ).
+- [x] `DapFusionHandler` (полный, 51КБ) + `FusionClientHandler` — ритуал слияния
+      (walk-QTE → 10-стадийный QTE → fusion → разблокировка Meteor). 6 пакетов,
+      тик под enableDap. Заменил shell. Триггерится ядром/DapHold-интерплеем.
+- [ ] **`ChargedDapHandler` ядро** — ПОСЛЕДНЕЕ: заряд G → тиры → комбо → fire →
+      heaven (~2400 строк). Связывает все собратья воедино (замена shell).
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

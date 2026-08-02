@@ -62,6 +62,7 @@ public final class CoopServerTick {
             if (cfg.enableDapCombo) DapComboChain.tick(server);
             DivineFlamCombo.tick(server);
             PerfectDapComboHandler.tick(server);
+            DapFusionHandler.tick(server);
         }
         if (cfg.enableFallDap) {
             FallDapHandler.tick(server);
