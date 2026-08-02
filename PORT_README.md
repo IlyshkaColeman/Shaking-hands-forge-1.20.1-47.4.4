@@ -138,8 +138,12 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 - [x] `DapFusionHandler` (полный, 51КБ) + `FusionClientHandler` — ритуал слияния
       (walk-QTE → 10-стадийный QTE → fusion → разблокировка Meteor). 6 пакетов,
       тик под enableDap. Заменил shell. Триггерится ядром/DapHold-интерплеем.
+- [x] Заглушки `HighFiveQTEHugHandler`/`HuddleHandler`/`HighFiveHugHandler` +
+      централизованная QTE-цепочка в `QTEManager` (PerfectDapCombo → Fusion →
+      QTEHug → Huddle → DapCombo → QTEManager). Оживило QTE у dap-combo/fusion.
 - [ ] **`ChargedDapHandler` ядро** — ПОСЛЕДНЕЕ: заряд G → тиры → комбо → fire →
-      heaven (~2400 строк). Связывает все собратья воедино (замена shell).
+      heaven (~2400 строк). Читаю по кускам (дошёл до ~строки 722), замена shell.
+      Диспетчер QTE уже вынесен в QTEManager, поэтому в ядре его не будет.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

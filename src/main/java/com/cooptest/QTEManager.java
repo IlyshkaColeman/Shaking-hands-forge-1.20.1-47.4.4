@@ -310,7 +310,15 @@ public final class QTEManager {
             NetworkEvent.Context c = ctx.get();
             c.enqueueWork(() -> {
                 ServerPlayer player = c.getSender();
-                if (player != null) onButtonPress(player, m.button());
+                if (player == null) return;
+                String button = m.button();
+                // Central QTE dispatch chain (Fabric: ChargedDapHandler's QTE receiver).
+                if (PerfectDapComboHandler.onButtonPress(player, button)) return;
+                if (DapFusionHandler.onQTEButtonPress(player, button)) return;
+                if (HighFiveQTEHugHandler.onButtonPress(player, button)) return;
+                if (HuddleHandler.onButtonPress(player, button)) return;
+                if (DapComboChain.onButtonPress(player, button)) return;
+                onButtonPress(player, button);
             });
             c.setPacketHandled(true);
         }
