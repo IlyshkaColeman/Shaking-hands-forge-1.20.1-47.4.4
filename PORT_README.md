@@ -127,9 +127,12 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       (AttackEntityEvent, читает `fireLevel`). Shell дорос `fireLevel`.
 - [x] `DivineFlamCombo` (+ client stub) — fire-комбо (J вдвоём) → вихрь пламени
       (2 пакета, тик под enableDap). Триггер — fire-dap ядра.
+- [x] `PerfectDapComboHandler` — тайминг-бар комбо (x1..x∞) через
+      `DapFusionHandler.FusionQTEPayload`. Тик под enableDap. Ординалы 69/74.
+- [~] `DapFusionHandler` — создан **shell** с `FusionQTEPayload` (+ `FusionClientHandler`
+      stub). Полный fusion (~1200 строк) — отдельным проходом.
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья остаток: PerfectDapComboHandler / DapFusionHandler(51КБ) /
-      DapHoldHandler(38КБ) / FallDapHandler.
+- [ ] Dap-семья остаток: DapFusionHandler(полный) / DapHoldHandler(38КБ) / FallDapHandler.
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
