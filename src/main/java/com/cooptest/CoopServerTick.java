@@ -63,6 +63,9 @@ public final class CoopServerTick {
             DivineFlamCombo.tick(server);
             PerfectDapComboHandler.tick(server);
         }
+        if (cfg.enableFallDap) {
+            FallDapHandler.tick(server);
+        }
         // Launch-trail particles for pushed / kicked / launched players.
         LaunchedPlayerTracker.tick(server);
         // Stage 4 (Dap family):

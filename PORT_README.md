@@ -131,8 +131,10 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
       `DapFusionHandler.FusionQTEPayload`. Тик под enableDap. Ординалы 69/74.
 - [~] `DapFusionHandler` — создан **shell** с `FusionQTEPayload` (+ `FusionClientHandler`
       stub). Полный fusion (~1200 строк) — отдельным проходом.
+- [x] `FallDapHandler` (+ client) — заряд дапа в падении (20+ блоков) → сквош-дайв,
+      приземление на игрока = сквош на 25 с (2 пакета, тик под enableFallDap).
 - [ ] `ChargedDapHandler` ядро: заряд G → тиры → комбо → fire → heaven (~2400 строк).
-- [ ] Dap-семья остаток: DapFusionHandler(полный) / DapHoldHandler(38КБ) / FallDapHandler.
+- [ ] Гиганты: полный `DapFusionHandler` (51КБ) / `DapHoldHandler` (38КБ).
 - [ ] Остаток HighFive: Hug / QTEHug / Huddle.
 
 ## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)

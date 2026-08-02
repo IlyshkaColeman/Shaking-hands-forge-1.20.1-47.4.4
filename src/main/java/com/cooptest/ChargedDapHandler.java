@@ -35,6 +35,7 @@ public final class ChargedDapHandler {
     // charged-dap state machine is ported (STAGE 4 — Dap core).
 
     public static boolean isCharging(UUID playerId) { return false; }
+    public static boolean isFullyCharged(UUID playerId) { return false; }
     public static boolean isInComboCooldown(UUID playerId) { return false; }
     public static boolean isInBlockingAnimation(UUID playerId) { return false; }
 
