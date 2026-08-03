@@ -1,6 +1,8 @@
 package com.cooptest.client;
 
 import com.cooptest.CoopMoves;
+import dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration;
+import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode;
 import dev.kosmx.playerAnim.api.layered.IAnimation;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
@@ -53,13 +55,20 @@ public final class CoopAnim {
                 PlayerAnimationAccess.getPlayerAssociatedData(player).get(LAYER_ID);
     }
 
-    /** Plays the animation with the given id on the player (no-op if unavailable). */
+    /**
+     * Plays the animation with the given id on the player (no-op if unavailable).
+     * Wrapped in an {@link FpAnimationPlayer} so the animation also renders on the
+     * local player's arms in first person (clap, holding, dap, hug, ...).
+     */
     public static void play(AbstractClientPlayer player, ResourceLocation animId) {
         ModifierLayer<IAnimation> layer = getLayer(player);
         if (layer == null) return;
         var anim = PlayerAnimationRegistry.getAnimation(animId);
         if (anim == null) return;
-        layer.setAnimation(new KeyframeAnimationPlayer(anim));
+        layer.setAnimation(new FpAnimationPlayer(
+                anim,
+                FirstPersonMode.THIRD_PERSON_MODEL,
+                new FirstPersonConfiguration(true, true, true, true)));
     }
 
     /** Stops any animation currently playing on the player's layer. */

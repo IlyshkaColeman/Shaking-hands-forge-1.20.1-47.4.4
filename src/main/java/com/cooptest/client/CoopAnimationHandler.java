@@ -77,7 +77,7 @@ public class CoopAnimationHandler {
     public static final ResourceLocation HEAVE_DAP_ANIM = id("heave_dap");
     public static final ResourceLocation HOLD_SHIELD_ANIM = id("hold_shield");
     public static final ResourceLocation SHIELD_ANIM = id("shield");
-    public static final ResourceLocation MARIO_JUMP_ANIM = id("jumpmario");
+    public static final ResourceLocation MARIO_JUMP_ANIM = id("mariojump");
     public static final ResourceLocation POP_ANIM = id("pop");
     public static final ResourceLocation HUG_START_ANIM = id("hug_start");
     public static final ResourceLocation HUGGING_ANIM = id("hugging");
