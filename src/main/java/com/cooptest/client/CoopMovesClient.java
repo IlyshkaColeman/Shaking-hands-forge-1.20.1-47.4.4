@@ -40,6 +40,8 @@ public final class CoopMovesClient {
             SitClientHandler.register();
             // Stage 4 (Dap family): charge (G) / fire-combo (J) input
             ChargedDapClientHandler.register();
+            // Stage 4 (HighFive-hug group): hold-to-hug (F) input
+            HugClientHandler.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
@@ -55,6 +57,7 @@ public final class CoopMovesClient {
         GrabInputHandler.registerKeyBindings(event);
         HighFiveClientHandler.registerKeyBindings(event);
         ChargedDapClientHandler.registerKeyBindings(event);
+        HugClientHandler.registerKeyBindings(event);
     }
 
     /** HUD overlays (mod event bus, client dist). */

@@ -31,6 +31,9 @@ public final class CoopServerTick {
         if (cfg.enableHighFive) {
             HighFiveHandler.tick(server);
         }
+        if (cfg.enableHighFiveHug) {
+            HighFiveHugHandler.tick(server);
+        }
         if (cfg.enableMarioJump) {
             MarioJumpHandler.tick(server);
         }

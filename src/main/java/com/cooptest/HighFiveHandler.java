@@ -285,6 +285,9 @@ public final class HighFiveHandler {
         PoseNetworking.broadcastAnimState(player1, 20);
         PoseNetworking.broadcastAnimState(player2, 20);
 
+        // Open the hold-to-hug window (F) after a successful high-five.
+        if (CoopMovesConfig.get().enableHighFiveHug) HighFiveHugHandler.startHugHold(player1, player2);
+
         double speed1 = getMaxRecentSpeed(player1.getUUID());
         double speed2 = getMaxRecentSpeed(player2.getUUID());
         double maxSpeed = Math.max(speed1, speed2);
