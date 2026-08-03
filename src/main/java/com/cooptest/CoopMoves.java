@@ -56,6 +56,10 @@ public class CoopMoves {
             // --- Networking channel + message registration (order-sensitive) ---
             CoopNetwork.registerAll();
 
+            // Clears all per-player state on death / respawn / disconnect (fixes stuck
+            // poses, e.g. the Grab key not responding after you die).
+            PlayerCleanupHandler.register();
+
             // --- Server-side handlers, gated by config exactly like Fabric onInitialize() ---
             CoopMovesConfig cfg = CoopMovesConfig.get();
             if (cfg.enableGrab) {
