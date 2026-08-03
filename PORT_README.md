@@ -1,40 +1,40 @@
-# Coop Moves — Forge 1.20.1 port (в процессе)
+# Coop Moves — Forge 1.20.1 port (ПОЛНЫЙ)
 
 Порт мода «Dap ur Homies» (Fabric 1.21.1) на **Forge 47.4.4 / Minecraft 1.20.1**.
 Анимации переведены на **KosmX Player Animation Library** (Forge).
 
-## Статус
+## Статус — все механики портированы (сборка #39 зелёная)
 
-- [x] Этап 1 — каркас проекта
-- [x] Этап 2 — реестры и ресурсы (звуки, эффекты, зелье, lang) — код готов; бинарные ассеты скопированы
-- [x] Этап 3 — сеть (общий SimpleChannel-канал CoopNetwork)
-- [x] Этап 7 (ядро) — анимации на KosmX: `CoopAnim` (слой) + `CoopAnimationHandler` (1914 строк, стейт-машина) + `PoseNetworking`
-- [~] Этап 4 — механики:
-  - [x] Grab / Throw / Human Shield (`GrabMechanic`, `GrabNetworking`, `CoopServerTick`)
-  - [x] Grab: взаимодействие + клавиши + клиентские эффекты
-    (`GrabInteractionHandler`, `GrabInputHandler`, `GrabClientEffects`) —
-    первая **играбельная** механика, готова к тесту в игре
-  - [~] HighFive — **базовый** High Five готов (`HighFiveHandler`,
-    `HighFiveClientHandler`): H поднять руку → соединение в радиусе →
-    тир-эффект (0–3) по скорости. Combo/Sike/Hug/Huddle/QTE — отложены (STAGE).
-  - [ ] Hug / Huddle / QTE (остаток группы HighFive)
-  - [ ] Dap-семейство (ChargedDap, Fusion, Meteor, Combo, Facing, Heaven, Hold, FallDap)
-  - [x] MarioJump (`MarioJumpHandler` + client) — прыжок на голову = отскок
-  - [x] Clap (`ClapHandler`) — клавиша V (руки пусты), тиры slow/spam/strong, синк, испуг животных
-  - [x] Push (`PushInteractionHandler` + `PushClientHandler`) — Shift+ПКМ зарядка,
-    партнёр ПКМ = запуск вверх; + `LaunchedPlayerTracker`, `PoseEffects`
-  - [x] Kick / DropKick (`KickHandler` + `KickClientHandler`) — T (руки пусты):
-    тап = пинок, зажатие в спринте = заряд дроп-кика. HUD-бар отложен (Этап 6).
-  - [x] FallCatch (`FallCatchHandler` + `CatchClientHandler`) — ловец с поднятой
-    рукой (R) рядом с падающим отменяет ему урон от падения
-  - [ ] Slap — сервер (`SlapHandler`) уже смотрел; триггер — миксин на атаку (Этап 5)
-  - [x] Mahito (`MahitoTrollHandler` + `MahitoClientHandler`) — проклятие через дап
-    (эффект mahito), заморозка → «тролл-смерть». Триггер `checkForMahitoTroll`
-    зовётся из Dap (заработает после Dap-ядра). Крафт зелья — отложен (миксин, Этап 5)
-  - [ ] Mahito + вспомогательные (LaunchedPlayerTracker, CarryingSlowdown, PlayerCleanup)
-- [ ] Этап 5 — миксины
-- [ ] Этап 6 — клиент (ввод, HUD, рендер) + `FirstPersonAnimationTest`
-- [ ] Этап 8 — сборка и тесты
+Каркас, реестры/ассеты, сеть (`CoopNetwork` SimpleChannel), анимации KosmX
+(`CoopAnim` + `CoopAnimationHandler` + `PoseNetworking`) — готовы.
+
+Механики (все играбельны):
+- [x] Grab / Throw / Human Shield / Spin (+ дуга броска `TrajectoryRenderer`)
+- [x] Ground Pound (`GroundPoundHandler`) — Sneak в воздухе = dive + AOE-слэм (+ HUD)
+- [x] HighFive (полный): tier 0–3, Combo (H+H), Sike (ПКМ+H), Mutual Sike
+- [x] Hug: hold-to-hug (F после хай-файва) + QTE-hug (G) — `HighFiveHugHandler`, `HighFiveQTEHugHandler`
+- [x] Huddle (`HuddleHandler`) — групповой сбор на F + 3 QTE-шага (G/H) → баффы/XP
+- [x] MarioJump, Clap (V), Push, Kick/DropKick (T), FallCatch (R)
+- [x] Slap (`SlapHandler`) — полный релиз заряда без партнёра: back/front slap + camera-flick
+- [x] Mahito — проклятие через дап
+- [x] **Dap-ядро** (`ChargedDapHandler`): заряд G → тиры 0–5, whiff/fizzle/eye-contact,
+      triple dap, perfect dap, fire dap + fusion + J-combo, heaven dap (полёт Y=500 + возврат)
+- [x] Dap-семейство: Facing / NormalFacing (dap-loop) / DapCombo / PerfectDapCombo /
+      DapFusion / Meteor / FallDap / DapHold / FireSlap / DivineFlamCombo
+- [x] QTE-система (общий диспетчер) + клиентский ввод G/H в QTE/Fusion окна
+
+Клиент / рендер / HUD:
+- [x] HUD заряда/огня + бары партнёров + heaven-ready + whiff-cooldown + «PRESS J!» (`ChargedDapClientHandler`)
+- [x] Impact-кадры удара (perfect/facing): текстуры impact1‑3 / frame0‑3 / impac7‑9
+- [x] HeavenWhiteOverlay (белая вспышка heaven-дапа), Ground Pound HUD, дуга броска
+- [x] Косметика верхних тиров: огненное торнадо, кольца Сатурна, aura-beam,
+      каскад heaven-частиц, sonic/expanding кольца, star-burst, massive shockwave
+
+Сознательно НЕ портировано (низкая ценность / нужна отложенная инфраструктура):
+- CoopImpact-силуэт игрока (нужны core-шейдеры + миксин в рендер сущности;
+  полноэкранная вспышка удара уже реализована через HUD-текстуры)
+- Мьют громкости во время heaven-дапа (Mojmap-опции громкости неудобно ставить)
+- Spin-rider combo для Ground Pound (в урезанном SpinHandler нет rider-хуков)
 
 ## Проверено в игре (01.08.2026)
 
