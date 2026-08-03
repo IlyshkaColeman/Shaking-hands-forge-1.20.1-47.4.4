@@ -29,7 +29,7 @@ public class FpAnimationPlayer extends KeyframeAnimationPlayer {
     }
 
     @Override
-    public FirstPersonConfiguration getFirstPersonConfiguration() {
+    public FirstPersonConfiguration getFirstPersonConfiguration(float tickDelta) {
         return fpConfig;
     }
 }
