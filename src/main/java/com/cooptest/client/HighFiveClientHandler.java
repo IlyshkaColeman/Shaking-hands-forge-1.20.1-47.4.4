@@ -49,6 +49,15 @@ public final class HighFiveClientHandler {
     private static long flashStartTime = 0;
     private static int currentTier = 0;
     private static long lastHighFiveHitMs = 0;
+    private static long comboWindowUntil = 0;
+
+    /** Set by HighFiveHandler.ComboWindowMsg — opens the local H+H combo window (~1s). */
+    public static void onComboWindow(java.util.UUID playerId) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.player.getUUID().equals(playerId)) comboWindowUntil = System.currentTimeMillis() + 1000L;
+    }
+
+    public static boolean isInComboWindow() { return System.currentTimeMillis() < comboWindowUntil; }
 
     private static final Map<UUID, Boolean> raisedHands = new HashMap<>();
     private static final Map<UUID, Long> highFiveAnimStart = new HashMap<>();
@@ -85,11 +94,16 @@ public final class HighFiveClientHandler {
 
         boolean isKeyPressed = highFiveKey.isDown();
         if (isKeyPressed && !wasKeyPressed) {
-            // H is shared: answer an open QTE / fusion window before raising a hand.
+            // H is shared: QTE > combo > sike > raise hand.
             if (QTEClientHandler.isActive()) {
                 QTEClientHandler.handleKeyPress("H");
             } else if (FusionClientHandler.isQTEOpen()) {
                 QTEManager.sendButtonPress("H");
+            } else if (isInComboWindow()) {
+                HighFiveHandler.sendComboRequest();
+            } else if (client.options.keyUse.isDown() && player.getMainHandItem().isEmpty()) {
+                // Right-click held + H = sike bait.
+                HighFiveHandler.sendSikeRequest();
             } else if (!player.getMainHandItem().isEmpty()) {
                 player.displayClientMessage(Component.literal("§cHands must be empty for high five!"), true);
             } else {

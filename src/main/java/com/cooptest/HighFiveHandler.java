@@ -8,6 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -69,6 +71,31 @@ public final class HighFiveHandler {
 
     private static final Map<UUID, PendingHighFive> pendingEffects = new HashMap<>();
 
+    // combo (H+H) state
+    private static final Map<UUID, Long> comboWindowStart = new HashMap<>();
+    private static final Map<UUID, UUID> comboPartner = new HashMap<>();
+    private static final Map<UUID, Long> comboRequested = new HashMap<>();
+    private static final Map<UUID, Long> comboFreezeEnd = new HashMap<>();
+    private static final Map<UUID, ComboImpact> pendingComboImpacts = new HashMap<>();
+    private static final Map<UUID, Vec3> frozenPositions = new HashMap<>();
+    private static final long COMBO_WINDOW_MS = 1000;
+    private static final long COMBO_FREEZE_MS = 2250;
+    private static final long COMBO_SECOND_HIT_MS = 1290;
+    private static final int ANIM_HIT_COMBO = 21;
+
+    // sike (fake high-five) state
+    private static final java.util.Set<UUID> sikeMode = new java.util.HashSet<>();
+    private static final Map<UUID, Long> sikeStunEnd = new HashMap<>();
+    private static final Map<UUID, Long> sikeSlowEnd = new HashMap<>();
+    private static final long SIKE_ANIM_MS = 1458L;
+    private static final long SIKE_SLOW_MS = 2000L;
+    private static final int ANIM_SIKE_POSE = 63;
+
+    private static class ComboImpact {
+        final ServerPlayer p1, p2; final long impactTime;
+        ComboImpact(ServerPlayer p1, ServerPlayer p2, long t) { this.p1 = p1; this.p2 = p2; this.impactTime = t; }
+    }
+
     public static final int ANIM_START = 1;
     public static final int ANIM_END   = 2;
     public static final int ANIM_HIT   = 3;
@@ -116,8 +143,67 @@ public final class HighFiveHandler {
             }
         }
 
-        // STAGE 4: combo window / pending combo impacts / freeze enforcement / sike
-        // stun & slow / beacon removals / particle beams tick here once ported.
+        // combo window timeout (missed combo)
+        Iterator<Map.Entry<UUID, Long>> cwIt = comboWindowStart.entrySet().iterator();
+        while (cwIt.hasNext()) {
+            Map.Entry<UUID, Long> entry = cwIt.next();
+            UUID playerId = entry.getKey();
+            if (now - entry.getValue() > COMBO_WINDOW_MS) {
+                cwIt.remove();
+                comboPartner.remove(playerId);
+                comboRequested.remove(playerId);
+            }
+        }
+        // pending combo second impacts
+        Iterator<Map.Entry<UUID, ComboImpact>> ciIt = pendingComboImpacts.entrySet().iterator();
+        while (ciIt.hasNext()) {
+            ComboImpact impact = ciIt.next().getValue();
+            if (now >= impact.impactTime) { executeSecondImpact(impact.p1, impact.p2); ciIt.remove(); }
+        }
+        // combo freeze expiry
+        Iterator<Map.Entry<UUID, Long>> cfIt = comboFreezeEnd.entrySet().iterator();
+        while (cfIt.hasNext()) {
+            Map.Entry<UUID, Long> entry = cfIt.next();
+            if (now >= entry.getValue()) {
+                UUID playerId = entry.getKey();
+                cfIt.remove();
+                frozenPositions.remove(playerId);
+                handRaisedTime.remove(playerId);
+                startAnimTime.remove(playerId);
+                ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+                if (player != null) { syncHandRaised(player, false); PoseNetworking.broadcastAnimState(player, 0); }
+            }
+        }
+        // pin frozen (combo/sike) players in place
+        for (Map.Entry<UUID, Vec3> entry : frozenPositions.entrySet()) {
+            ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
+            if (player != null) {
+                Vec3 fp = entry.getValue();
+                if (player.position().distanceToSqr(fp) > 0.01) {
+                    player.teleportTo(player.serverLevel(), fp.x, fp.y, fp.z, player.getYRot(), player.getXRot());
+                    player.setDeltaMovement(Vec3.ZERO);
+                    player.hurtMarked = true;
+                }
+            }
+        }
+        // sike stun -> slow
+        Iterator<Map.Entry<UUID, Long>> ssIt = sikeStunEnd.entrySet().iterator();
+        while (ssIt.hasNext()) {
+            Map.Entry<UUID, Long> entry = ssIt.next();
+            if (now >= entry.getValue()) {
+                UUID victimId = entry.getKey();
+                ssIt.remove();
+                frozenPositions.remove(victimId);
+                ServerPlayer victim = server.getPlayerList().getPlayer(victimId);
+                if (victim != null) {
+                    PoseNetworking.broadcastAnimState(victim, 0);
+                    syncHandRaised(victim, false);
+                    victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, (int) (SIKE_SLOW_MS / 50), 4, false, true));
+                    sikeSlowEnd.put(victimId, now + SIKE_SLOW_MS);
+                }
+            }
+        }
+        sikeSlowEnd.entrySet().removeIf(e -> now >= e.getValue());
 
         Iterator<Map.Entry<UUID, Long>> animIt = highFiveAnimStart.entrySet().iterator();
         while (animIt.hasNext()) {
@@ -175,13 +261,14 @@ public final class HighFiveHandler {
 
     /** Consulted by PoseNetworking before allowing GRAB_READY. */
     public static boolean isInBlockingState(UUID playerId) {
-        return isInBlockingAnimation(playerId);
-        // STAGE 4: || FallDapHandler.isSquashed || sike stun/slow
+        return isInBlockingAnimation(playerId)
+                || sikeStunEnd.containsKey(playerId)
+                || sikeSlowEnd.containsKey(playerId);
     }
 
     public static boolean isInBlockingAnimation(UUID uuid) {
-        return highFiveAnimStart.containsKey(uuid) || endAnimTime.containsKey(uuid);
-        // STAGE 4: || comboFreezeEnd || ChargedDapHandler.isInBlockingAnimation
+        return highFiveAnimStart.containsKey(uuid) || endAnimTime.containsKey(uuid)
+                || comboFreezeEnd.containsKey(uuid);
     }
 
     public static boolean isInHighFiveMode(UUID playerId) {
@@ -223,14 +310,31 @@ public final class HighFiveHandler {
         endAnimTime.remove(playerId);
         speedHistory.remove(playerId);
         pendingEffects.remove(playerId);
+        comboWindowStart.remove(playerId);
+        comboPartner.remove(playerId);
+        comboRequested.remove(playerId);
+        comboFreezeEnd.remove(playerId);
+        pendingComboImpacts.remove(playerId);
+        frozenPositions.remove(playerId);
+        sikeMode.remove(playerId);
+        sikeStunEnd.remove(playerId);
+        sikeSlowEnd.remove(playerId);
     }
 
     // ------------------------------------------------------------------ requests
 
     private static void onHighFiveRequest(ServerPlayer player) {
         UUID uuid = player.getUUID();
-        // STAGE 4: guards for ChargedDapHandler.isCharging / isInComboCooldown and
-        // FallCatchHandler.isInCatchReadyMode go here once those are ported.
+        if (!handRaisedTime.containsKey(uuid) && ChargedDapHandler.isCharging(uuid)) {
+            syncHandRaised(player, false);
+            return;
+        }
+        if (ChargedDapHandler.isInComboCooldown(uuid)) {
+            player.displayClientMessage(Component.literal("§cWait 1 second after combo!"), true);
+            syncHandRaised(player, false);
+            return;
+        }
+        if (FallCatchHandler.isInCatchReadyMode(uuid)) return;
         if (isInBlockingState(uuid)) return;
         if (isOnCooldown(uuid)) return;
         if (!player.getMainHandItem().isEmpty()) return;
@@ -267,7 +371,11 @@ public final class HighFiveHandler {
     }
 
     private static void executeHighFive(ServerPlayer player1, ServerPlayer player2) {
-        // STAGE 4: sike bait handling (sikeMode) branches off here first.
+        boolean p1Sike = sikeMode.remove(player1.getUUID());
+        boolean p2Sike = sikeMode.remove(player2.getUUID());
+        if (p1Sike && p2Sike) { executeMutualSike(player1, player2); return; }
+        if (p1Sike) { executeSike(player1, player2); return; }
+        if (p2Sike) { executeSike(player2, player1); return; }
         long now = System.currentTimeMillis();
         highFiveCooldown.put(player1.getUUID(), now);
         highFiveCooldown.put(player2.getUUID(), now);
@@ -321,7 +429,114 @@ public final class HighFiveHandler {
                 highFivePos.x, highFivePos.y, highFivePos.z,
                 player1.getUUID(), player2.getUUID(), tier);
 
-        // STAGE 4: combo window open + hug / QTE-hug trigger threads restore here.
+        // Open the H+H combo window.
+        comboWindowStart.put(player1.getUUID(), now);
+        comboWindowStart.put(player2.getUUID(), now);
+        comboPartner.put(player1.getUUID(), player2.getUUID());
+        comboPartner.put(player2.getUUID(), player1.getUUID());
+        CoopNetwork.sendToPlayer(player1, new ComboWindowMsg(player1.getUUID()));
+        CoopNetwork.sendToPlayer(player2, new ComboWindowMsg(player2.getUUID()));
+    }
+
+    // ------------------------------------------------------------------ combo (H+H)
+
+    private static void onComboRequest(ServerPlayer player) {
+        UUID playerId = player.getUUID();
+        long now = System.currentTimeMillis();
+        Long windowStart = comboWindowStart.get(playerId);
+        if (windowStart == null || now - windowStart > COMBO_WINDOW_MS) {
+            comboWindowStart.remove(playerId);
+            comboPartner.remove(playerId);
+            comboRequested.remove(playerId);
+            return;
+        }
+        comboRequested.put(playerId, now);
+        UUID partnerId = comboPartner.get(playerId);
+        if (partnerId == null) return;
+        ServerPlayer partner = player.getServer().getPlayerList().getPlayer(partnerId);
+        if (partner == null || !comboWindowStart.containsKey(partnerId)) return;
+        if (comboRequested.containsKey(partnerId)) executeCombo(player, partner);
+    }
+
+    private static void executeCombo(ServerPlayer p1, ServerPlayer p2) {
+        UUID id1 = p1.getUUID(), id2 = p2.getUUID();
+        long now = System.currentTimeMillis();
+        comboWindowStart.remove(id1); comboWindowStart.remove(id2);
+        comboPartner.remove(id1); comboPartner.remove(id2);
+        comboRequested.remove(id1); comboRequested.remove(id2);
+        handRaisedTime.remove(id1); handRaisedTime.remove(id2);
+        startAnimTime.remove(id1); startAnimTime.remove(id2);
+        syncHandRaised(p1, false); syncHandRaised(p2, false);
+        comboFreezeEnd.put(id1, now + COMBO_FREEZE_MS);
+        comboFreezeEnd.put(id2, now + COMBO_FREEZE_MS);
+        frozenPositions.put(id1, p1.position());
+        frozenPositions.put(id2, p2.position());
+        p1.setDeltaMovement(Vec3.ZERO); p2.setDeltaMovement(Vec3.ZERO);
+        p1.hurtMarked = true; p2.hurtMarked = true;
+        PoseNetworking.broadcastAnimState(p1, ANIM_HIT_COMBO);
+        PoseNetworking.broadcastAnimState(p2, ANIM_HIT_COMBO);
+        pendingComboImpacts.put(id1, new ComboImpact(p1, p2, now + COMBO_SECOND_HIT_MS));
+        p1.displayClientMessage(Component.literal("§6§l✨ COMBO! ✨"), true);
+        p2.displayClientMessage(Component.literal("§6§l✨ COMBO! ✨"), true);
+    }
+
+    private static void executeSecondImpact(ServerPlayer p1, ServerPlayer p2) {
+        Vec3 pos = p1.position().add(p2.position()).scale(0.5).add(0, 0.5, 0);
+        ServerLevel world = p1.serverLevel();
+        world.playSound(null, pos.x, pos.y, pos.z, ModSounds.DAP_WEAK.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
+        world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.5f, 1.0f);
+        world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, pos.x, pos.y, pos.z, 30, 0.3, 0.3, 0.3, 0.1);
+        world.sendParticles(ParticleTypes.CRIT, pos.x, pos.y, pos.z, 20, 0.3, 0.3, 0.3, 0.15);
+        p1.displayClientMessage(Component.literal("§e⚡ PERFECT! ⚡"), true);
+        p2.displayClientMessage(Component.literal("§e⚡ PERFECT! ⚡"), true);
+    }
+
+    // ------------------------------------------------------------------ sike
+
+    private static void executeSike(ServerPlayer siker, ServerPlayer victim) {
+        long now = System.currentTimeMillis();
+        UUID sikerId = siker.getUUID(), victimId = victim.getUUID();
+        handRaisedTime.remove(sikerId); handRaisedTime.remove(victimId);
+        startAnimTime.remove(sikerId); startAnimTime.remove(victimId);
+        syncHandRaised(siker, false); syncHandRaised(victim, false);
+        PoseNetworking.broadcastAnimState(siker, 0);
+        broadcastHighFiveAnim(victim, ANIM_SIKE);
+        PoseNetworking.broadcastAnimState(victim, ANIM_SIKE_POSE);
+        sikeStunEnd.put(victimId, now + SIKE_ANIM_MS);
+        frozenPositions.put(victimId, victim.position());
+        victim.setDeltaMovement(Vec3.ZERO); victim.hurtMarked = true;
+        ServerLevel world = victim.serverLevel();
+        Vec3 vp = victim.position().add(0, 1.8, 0);
+        world.playSound(null, vp.x, vp.y, vp.z, SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 0.8f);
+        world.sendParticles(ParticleTypes.ANGRY_VILLAGER, vp.x, vp.y + 0.6, vp.z, 4, 0.3, 0.2, 0.3, 0.05);
+        world.sendParticles(ParticleTypes.POOF, vp.x, vp.y + 0.3, vp.z, 8, 0.2, 0.1, 0.2, 0.03);
+        siker.displayClientMessage(Component.literal("§6§l😂 SIKE!"), true);
+        victim.displayClientMessage(Component.literal("§c§lSIKE!"), true);
+        highFiveCooldown.put(sikerId, now);
+    }
+
+    private static void executeMutualSike(ServerPlayer p1, ServerPlayer p2) {
+        long now = System.currentTimeMillis();
+        for (ServerPlayer p : new ServerPlayer[]{p1, p2}) {
+            UUID id = p.getUUID();
+            handRaisedTime.remove(id); startAnimTime.remove(id);
+            syncHandRaised(p, false);
+            PoseNetworking.broadcastAnimState(p, 0);
+            highFiveCooldown.put(id, now);
+        }
+        Vec3 toP2 = p2.position().subtract(p1.position()).normalize();
+        if (toP2.lengthSqr() < 0.01) toP2 = new Vec3(1, 0, 0);
+        ServerLevel world = p1.serverLevel();
+        p1.hurt(world.damageSources().magic(), 6.0f);
+        p2.hurt(world.damageSources().magic(), 6.0f);
+        p1.setDeltaMovement(toP2.reverse().scale(0.65).add(0, 0.5, 0)); p1.hurtMarked = true;
+        p2.setDeltaMovement(toP2.scale(0.65).add(0, 0.5, 0)); p2.hurtMarked = true;
+        Vec3 mid = p1.position().add(p2.position()).scale(0.5).add(0, 1.0, 0);
+        world.sendParticles(ParticleTypes.CRIT, mid.x, mid.y, mid.z, 24, 0.4, 0.4, 0.4, 0.2);
+        world.sendParticles(ParticleTypes.ANGRY_VILLAGER, mid.x, mid.y + 0.5, mid.z, 8, 0.3, 0.2, 0.3, 0.05);
+        world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 0.8f);
+        p1.displayClientMessage(Component.literal("§c§l💥 MUTUAL SIKE! You both played dirty!"), true);
+        p2.displayClientMessage(Component.literal("§c§l💥 MUTUAL SIKE! You both played dirty!"), true);
     }
 
     private static double getMaxRecentSpeed(UUID playerId) {
@@ -593,16 +808,70 @@ public final class HighFiveHandler {
         }
     }
 
+    /** C2S: H pressed during the combo window. */
+    public record ComboRequestMsg() {
+        public static void encode(ComboRequestMsg m, FriendlyByteBuf buf) { }
+        public static ComboRequestMsg decode(FriendlyByteBuf buf) { return new ComboRequestMsg(); }
+        public static void handle(ComboRequestMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                ServerPlayer p = c.getSender();
+                if (p != null && CoopMovesConfig.get().enableHighFiveCombo) onComboRequest(p);
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
+    /** C2S: H pressed while attacking = sike bait. */
+    public record SikeRequestMsg() {
+        public static void encode(SikeRequestMsg m, FriendlyByteBuf buf) { }
+        public static SikeRequestMsg decode(FriendlyByteBuf buf) { return new SikeRequestMsg(); }
+        public static void handle(SikeRequestMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                ServerPlayer p = c.getSender();
+                if (p != null && CoopMovesConfig.get().enableHighFive) { sikeMode.add(p.getUUID()); onHighFiveRequest(p); }
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
+    /** S2C: opens the client "press H for combo" window. */
+    public record ComboWindowMsg(UUID playerId) {
+        public static void encode(ComboWindowMsg m, FriendlyByteBuf buf) { buf.writeUUID(m.playerId); }
+        public static ComboWindowMsg decode(FriendlyByteBuf buf) { return new ComboWindowMsg(buf.readUUID()); }
+        public static void handle(ComboWindowMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.HighFiveClientHandler.onComboWindow(m.playerId()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
     /** Registered from CoopNetwork.registerAll() (order-sensitive across sides). */
     public static void registerMessages() {
         CoopNetwork.register(HighFiveRequestMsg.class, HighFiveRequestMsg::encode, HighFiveRequestMsg::decode, HighFiveRequestMsg::handle);
         CoopNetwork.register(HandRaisedSyncMsg.class, HandRaisedSyncMsg::encode, HandRaisedSyncMsg::decode, HandRaisedSyncMsg::handle);
         CoopNetwork.register(HighFiveSuccessMsg.class, HighFiveSuccessMsg::encode, HighFiveSuccessMsg::decode, HighFiveSuccessMsg::handle);
         CoopNetwork.register(HighFiveAnimMsg.class, HighFiveAnimMsg::encode, HighFiveAnimMsg::decode, HighFiveAnimMsg::handle);
+        CoopNetwork.register(ComboRequestMsg.class, ComboRequestMsg::encode, ComboRequestMsg::decode, ComboRequestMsg::handle);
+        CoopNetwork.register(SikeRequestMsg.class, SikeRequestMsg::encode, SikeRequestMsg::decode, SikeRequestMsg::handle);
+        CoopNetwork.register(ComboWindowMsg.class, ComboWindowMsg::encode, ComboWindowMsg::decode, ComboWindowMsg::handle);
     }
 
     /** Client -> server request helper. */
     public static void sendHighFiveRequest() {
         CoopNetwork.sendToServer(new HighFiveRequestMsg());
+    }
+
+    public static void sendComboRequest() {
+        CoopNetwork.sendToServer(new ComboRequestMsg());
+    }
+
+    public static void sendSikeRequest() {
+        CoopNetwork.sendToServer(new SikeRequestMsg());
     }
 }
