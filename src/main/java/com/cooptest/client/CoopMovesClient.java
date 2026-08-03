@@ -48,6 +48,8 @@ public final class CoopMovesClient {
             GroundPoundClientHandler.register();
             // Heaven-dap white overlay driver
             HeavenDapClientHandler.register();
+            // Throw trajectory preview (world render)
+            TrajectoryRenderer.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
