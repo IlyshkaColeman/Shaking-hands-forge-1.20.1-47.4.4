@@ -95,5 +95,6 @@ public final class CoopNetwork {
         HighFiveHugHandler.registerMessages();
         HuddleHandler.registerMessages();
         GroundPoundHandler.registerMessages();
+        SpinHandler.registerMessages();
     }
 }

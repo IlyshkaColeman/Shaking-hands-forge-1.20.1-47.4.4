@@ -48,6 +48,8 @@ public final class CoopMovesClient {
             GroundPoundClientHandler.register();
             // Heaven-dap white overlay driver
             HeavenDapClientHandler.register();
+            // Spin (helicopter) client state
+            SpinClientHandler.register();
             // Throw trajectory preview (world render)
             TrajectoryRenderer.register();
             // Clap has no dedicated client handler — it is triggered from
@@ -74,5 +76,6 @@ public final class CoopMovesClient {
         event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
         event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
         event.registerAboveAll("heaven_white_overlay", HeavenWhiteOverlay.HUD);
+        event.registerAboveAll("spin_hud", SpinClientHandler.HUD);
     }
 }

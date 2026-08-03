@@ -54,6 +54,8 @@ public final class GrabInputHandler {
     private static boolean wasJumpPressed = false;
     private static boolean wasShieldKeyPressed = false;
 
+    private static boolean spinWasActive = false;
+    private static long spinStopTime = 0L;
     private static boolean isChargingThrow = false;
     private static long throwChargeStartTime = 0;
     private static final long MAX_CHARGE_TIME_MS = 1500;
@@ -158,13 +160,51 @@ public final class GrabInputHandler {
         // groups) attach here once those handlers are ported.
         boolean isSneakPressed = client.options.keyShift.isDown();
         boolean sneakJustPressed = isSneakPressed && !wasSneakPressed;
-        if (sneakJustPressed && isBeingHeld) {
-            GrabNetworking.sendEscapeRequest();
-        } else if (sneakJustPressed && !isHolding && !player.isPassenger()
-                && !player.onGround() && pose == PoseState.NONE
-                && com.cooptest.CoopMovesConfig.get().enableGroundPound) {
-            // Ground pound: sneak while airborne to dive.
-            com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+        boolean sneakJustReleased = !isSneakPressed && wasSneakPressed;
+        boolean isThrownAirborne = pose == PoseState.GRABBED && !player.isPassenger() && !player.onGround();
+        boolean diving = com.cooptest.client.GroundPoundClientHandler.isLocalPlayerDiving();
+        boolean spinning = com.cooptest.client.SpinClientHandler.isLocalPlayerSpinning();
+        boolean helicopterMode = isThrownAirborne && spinning && player.getFirstPassenger() != null;
+
+        if (helicopterMode && !diving) {
+            // Spinning with a rider: release sneak -> stop + MEGA ground pound.
+            if (sneakJustReleased) {
+                spinWasActive = false;
+                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStopMsg());
+                com.cooptest.client.SpinClientHandler.forceStopLocalSpin();
+                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+            }
+        } else if (isThrownAirborne && !diving) {
+            if (sneakJustReleased && spinning) {
+                spinWasActive = true;
+                spinStopTime = System.currentTimeMillis();
+                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStopMsg());
+                com.cooptest.client.SpinClientHandler.forceStopLocalSpin();
+            }
+            if (sneakJustPressed) {
+                if (spinning) {
+                    spinWasActive = false;
+                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStopMsg());
+                    com.cooptest.client.SpinClientHandler.forceStopLocalSpin();
+                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+                } else if (spinWasActive && System.currentTimeMillis() - spinStopTime < 300L) {
+                    spinWasActive = false;
+                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+                } else {
+                    spinWasActive = false;
+                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStartMsg());
+                }
+            }
+        } else {
+            if (sneakJustPressed && isBeingHeld) {
+                GrabNetworking.sendEscapeRequest();
+            } else if (sneakJustPressed && !isHolding && pose == PoseState.NONE
+                    && !player.isPassenger() && !player.onGround() && !diving
+                    && com.cooptest.CoopMovesConfig.get().enableGroundPound) {
+                // Standalone ground pound: sneak while airborne (not in a grab).
+                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+            }
+            if (!isThrownAirborne) spinWasActive = false;
         }
         wasSneakPressed = isSneakPressed;
 

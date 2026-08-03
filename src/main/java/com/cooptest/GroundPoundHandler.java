@@ -79,7 +79,8 @@ public final class GroundPoundHandler {
         UUID id = player.getUUID();
         if (diving.contains(id)) return;
         if (GrabMechanic.heldBy.containsKey(id)) return;
-        if (player.onGround()) return;
+        if (player.onGround() && !SpinHandler.isSpinning(id)) return;
+        if (SpinHandler.isSpinning(id)) SpinHandler.stopSpinKeepRider(player.getServer(), id);
         diving.add(id);
         diveStartY.put(id, player.getY());
         diveStartTime.put(id, System.currentTimeMillis());
@@ -113,6 +114,8 @@ public final class GroundPoundHandler {
                 it.remove();
                 double heightFallen = Math.max(0, diveStartY.getOrDefault(id, player.getY()) - player.getY());
                 cleanupDiveMaps(id);
+                UUID riderId = SpinHandler.pendingGroundPoundRider.remove(id);
+                if (riderId != null) SpinHandler.detachRiderByIds(player.getServer(), id, riderId);
                 executeImpact(player, heightFallen);
                 broadcastDiveSync(server, id, false);
                 continue;
