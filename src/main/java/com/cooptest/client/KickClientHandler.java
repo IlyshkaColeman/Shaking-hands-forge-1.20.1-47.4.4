@@ -2,9 +2,11 @@ package com.cooptest.client;
 
 import com.cooptest.KickHandler;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +33,18 @@ public final class KickClientHandler {
 
     private static final Map<UUID, Float> otherCharges = new HashMap<>();
     private static final Map<UUID, Boolean> otherActive = new HashMap<>();
+
+    private static long hitFlashUntil = 0L;
+    private static boolean hitFlashDropKick = false;
+    private static final long HIT_FLASH_MS = 180L;
+
+    /** Hit-flash HUD overlay (registered from CoopMovesClient). */
+    public static final IGuiOverlay HUD = (gui, g, partial, w, h) -> {
+        long rem = hitFlashUntil - System.currentTimeMillis();
+        if (rem <= 0) return;
+        int alpha = (int) (rem / (float) HIT_FLASH_MS * (hitFlashDropKick ? 120 : 70));
+        g.fill(0, 0, w, h, (alpha << 24) | (hitFlashDropKick ? 0xFF4400 : 0xFFFFFF));
+    };
 
     public static void register() { }
 
@@ -97,7 +111,9 @@ public final class KickClientHandler {
     }
 
     public static void onResult(boolean isDropKick, boolean hit) {
-        // STAGE 6: hit-flash HUD feedback.
+        if (!hit) return;
+        hitFlashUntil = System.currentTimeMillis() + HIT_FLASH_MS;
+        hitFlashDropKick = isDropKick;
     }
 
     public static boolean isOnCooldown() { return System.currentTimeMillis() < cooldownEndMs; }

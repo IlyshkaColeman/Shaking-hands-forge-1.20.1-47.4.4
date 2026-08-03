@@ -77,5 +77,7 @@ public final class CoopMovesClient {
         event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
         event.registerAboveAll("heaven_white_overlay", HeavenWhiteOverlay.HUD);
         event.registerAboveAll("spin_hud", SpinClientHandler.HUD);
+        event.registerAboveAll("meteor_hud", MeteorStrikeClientHandler.HUD);
+        event.registerAboveAll("kick_hit_flash", KickClientHandler.HUD);
     }
 }

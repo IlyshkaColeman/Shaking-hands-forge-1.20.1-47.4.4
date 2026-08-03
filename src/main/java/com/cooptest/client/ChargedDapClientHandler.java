@@ -131,8 +131,10 @@ public final class ChargedDapClientHandler {
         // --- Dap charge (G): press to charge, release to dap ---
         boolean dapDown = dapKey.isDown();
         if (dapDown && !wasDapKeyDown) {
-            // G is shared: answer an open QTE / fusion window before starting a charge.
-            if (QTEClientHandler.isActive()) {
+            // G is shared: meteor > QTE > fusion > charge.
+            if (MeteorStrikeClientHandler.hasAbility()) {
+                MeteorStrikeClientHandler.fire();
+            } else if (QTEClientHandler.isActive()) {
                 QTEClientHandler.handleKeyPress("G");
             } else if (FusionClientHandler.isQTEOpen()) {
                 QTEManager.sendButtonPress("G");
