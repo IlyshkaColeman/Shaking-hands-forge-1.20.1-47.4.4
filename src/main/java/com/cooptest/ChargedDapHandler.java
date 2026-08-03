@@ -302,6 +302,36 @@ public final class ChargedDapHandler {
         }
     }
 
+    /** S2C: full-screen impact flash (grayscale = white-flash + impact frames). */
+    public record ImpactFrameMsg(int durationMs, boolean grayscale) {
+        public static void encode(ImpactFrameMsg m, FriendlyByteBuf buf) { buf.writeInt(m.durationMs); buf.writeBoolean(m.grayscale); }
+        public static ImpactFrameMsg decode(FriendlyByteBuf buf) { return new ImpactFrameMsg(buf.readInt(), buf.readBoolean()); }
+        public static void handle(ImpactFrameMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onImpactFrame(m.durationMs(), m.grayscale()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
+    /** S2C: perfect-dap animated impact frame sequence trigger. */
+    public record PerfectDapImpactFrameMsg(int frameIndex) {
+        public static void encode(PerfectDapImpactFrameMsg m, FriendlyByteBuf buf) { buf.writeInt(m.frameIndex); }
+        public static PerfectDapImpactFrameMsg decode(FriendlyByteBuf buf) { return new PerfectDapImpactFrameMsg(buf.readInt()); }
+        public static void handle(PerfectDapImpactFrameMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.ChargedDapClientHandler.onPerfectDapImpactFrame(m.frameIndex()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
     public static void registerMessages() {
         CoopNetwork.register(PerfectDapFreezePayload.class,
                 PerfectDapFreezePayload::encode, PerfectDapFreezePayload::decode, PerfectDapFreezePayload::handle);
@@ -323,6 +353,10 @@ public final class ChargedDapHandler {
                 FireDapWindowMsg::encode, FireDapWindowMsg::decode, FireDapWindowMsg::handle);
         CoopNetwork.register(DapResultMsg.class,
                 DapResultMsg::encode, DapResultMsg::decode, DapResultMsg::handle);
+        CoopNetwork.register(ImpactFrameMsg.class,
+                ImpactFrameMsg::encode, ImpactFrameMsg::decode, ImpactFrameMsg::handle);
+        CoopNetwork.register(PerfectDapImpactFrameMsg.class,
+                PerfectDapImpactFrameMsg::encode, PerfectDapImpactFrameMsg::decode, PerfectDapImpactFrameMsg::handle);
     }
 
     /** Registers the EntityInteract dap-detect (Fabric UseEntityCallback). */
@@ -379,6 +413,10 @@ public final class ChargedDapHandler {
                 ArmorStand stand = perfectDapArmorStands.get(e.p1().getUUID());
                 Vec3 pos = (stand != null && !stand.isRemoved()) ? stand.position() : e.pos();
                 ServerLevel w = e.world();
+                CoopNetwork.sendToPlayer(e.p1(), new ImpactFrameMsg(180, true));
+                CoopNetwork.sendToPlayer(e.p2(), new ImpactFrameMsg(180, true));
+                CoopNetwork.sendToPlayer(e.p1(), new PerfectDapImpactFrameMsg(1));
+                CoopNetwork.sendToPlayer(e.p2(), new PerfectDapImpactFrameMsg(1));
                 w.sendParticles(ParticleTypes.EXPLOSION, pos.x, pos.y, pos.z, 5, 0.2, 0.2, 0.2, 0);
                 w.sendParticles(ParticleTypes.CRIT, pos.x, pos.y, pos.z, 40, 0.4, 0.4, 0.4, 0.12);
                 w.sendParticles(ParticleTypes.FIREWORK, pos.x, pos.y, pos.z, 50, 0.5, 0.5, 0.5, 0.15);

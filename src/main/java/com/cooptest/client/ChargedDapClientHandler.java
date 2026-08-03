@@ -4,6 +4,7 @@ import com.cooptest.ChargedDapHandler;
 import com.cooptest.CoopMovesConfig;
 import com.cooptest.CoopNetwork;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,6 +12,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -67,6 +69,29 @@ public final class ChargedDapClientHandler {
 
     private static long heavenReadyStartTime = 0;
 
+    // cinematic impact frames (textures under assets/testcoop/textures/gui/impact/)
+    private static boolean perfectImpactActive = false;
+    private static long perfectImpactStartTime = 0;
+    private static int perfectDapImpactFrame = 0;
+    private static long perfectDapImpactFrameStartTime = 0;
+    private static boolean facingDapImpactActive = false;
+    private static long facingDapImpactStartMs = 0;
+
+    private static final ResourceLocation IMPACT1 = tex("impact1");
+    private static final ResourceLocation IMPACT2 = tex("impact2");
+    private static final ResourceLocation IMPACT3 = tex("impact3");
+    private static final ResourceLocation FRAME0 = tex("frame0");
+    private static final ResourceLocation FRAME1 = tex("frame1");
+    private static final ResourceLocation FRAME2 = tex("frame2");
+    private static final ResourceLocation FRAME3 = tex("frame3");
+    private static final ResourceLocation IMPAC7 = tex("impac7");
+    private static final ResourceLocation IMPAC8 = tex("impac8");
+    private static final ResourceLocation IMPAC9 = tex("impac9");
+
+    private static ResourceLocation tex(String name) {
+        return new ResourceLocation("testcoop", "textures/gui/impact/" + name + ".png");
+    }
+
     private static final long CHARGE_TIME_MS = 250;
     private static final long FLASH_DURATION = 500;
 
@@ -81,7 +106,7 @@ public final class ChargedDapClientHandler {
     // -------------------------------------------------------------- registration
     public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
         dapKey = new KeyMapping("key.coopmoves.dap", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "category.coopmoves");
-        fireComboKey = new KeyMapping("key.coopmoves.firecombo", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "category.coopmoves");
+        fireComboKey = new KeyMapping("key.coopmoves.fire_dap_combo", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "category.coopmoves");
         event.register(dapKey);
         event.register(fireComboKey);
     }
@@ -220,6 +245,14 @@ public final class ChargedDapClientHandler {
         }
     }
 
+    private static void blitFull(GuiGraphics g, ResourceLocation tex, int w, int h, float alpha) {
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
+        g.blit(tex, 0, 0, w, h, 0f, 0f, 1920, 1080, 1920, 1080);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+    }
+
     // -------------------------------------------------------------- HUD
     private static void renderHud(GuiGraphics g, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
@@ -241,6 +274,49 @@ public final class ChargedDapClientHandler {
                 case 4 -> 0xFF00FF; case 5 -> 0xFF4400; default -> 0x888888;
             };
             g.fill(0, 0, screenWidth, screenHeight, (alpha << 24) | rgb);
+        }
+
+        // perfect-dap white flash + impact1-3
+        if (perfectImpactActive) {
+            long elapsed = now - perfectImpactStartTime;
+            if (elapsed < 30) {
+                int alpha = (int) (255 * ((float) elapsed / 30));
+                g.fill(0, 0, screenWidth, screenHeight, (alpha << 24) | 0xFFFFFF);
+            } else if (elapsed < 80) {
+                blitFull(g, IMPACT1, screenWidth, screenHeight, 1.0f);
+            } else if (elapsed < 130) {
+                blitFull(g, IMPACT2, screenWidth, screenHeight, 1.0f);
+            } else if (elapsed < 180) {
+                blitFull(g, IMPACT3, screenWidth, screenHeight, 1.0f);
+            } else {
+                perfectImpactActive = false;
+            }
+        }
+
+        // perfect-dap animated frame sequence
+        if (perfectDapImpactFrame > 0) {
+            long elapsed = now - perfectDapImpactFrameStartTime;
+            ResourceLocation frame;
+            if (elapsed < 33) frame = FRAME0;
+            else if (elapsed < 66) frame = FRAME1;
+            else if (elapsed < 100) frame = FRAME2;
+            else if (elapsed < 133) frame = FRAME0;
+            else if (elapsed < 166) frame = FRAME3;
+            else if (elapsed < 200) frame = FRAME0;
+            else { perfectDapImpactFrame = 0; frame = null; }
+            if (frame != null) blitFull(g, frame, screenWidth, screenHeight, 1.0f);
+        }
+
+        // facing-dap impact frames
+        if (facingDapImpactActive) {
+            long elapsed = now - facingDapImpactStartMs;
+            ResourceLocation frame;
+            if (elapsed < 50) frame = IMPAC7;
+            else if (elapsed < 100) frame = IMPAC8;
+            else if (elapsed < 150) frame = IMPAC9;
+            else if (elapsed < 200) frame = FRAME0;
+            else { facingDapImpactActive = false; frame = null; }
+            if (frame != null) blitFull(g, frame, screenWidth, screenHeight, 1.0f);
         }
 
         boolean onCooldown = now < whiffCooldownEnd;
@@ -333,8 +409,23 @@ public final class ChargedDapClientHandler {
     /** Read by MovementFreezeMixin (Stage 5) to lock local movement. */
     public static boolean isPlayerFrozen() { return playerFrozen; }
 
-    /** STAGE 6: facing-dap impact frame flash (texture VFX not yet ported). */
-    public static void onFacingDapImpact() { }
+    /** Perfect-dap white-flash + impact1-3 frame sequence. */
+    public static void onImpactFrame(int durationMs, boolean grayscale) {
+        if (grayscale) { perfectImpactActive = true; perfectImpactStartTime = System.currentTimeMillis(); }
+    }
+
+    /** Perfect-dap animated frame0-3 sequence (gated on freeze). */
+    public static void onPerfectDapImpactFrame(int frameIndex) {
+        if (!playerFrozen) return;
+        perfectDapImpactFrame = 1;
+        perfectDapImpactFrameStartTime = System.currentTimeMillis();
+    }
+
+    /** Facing-dap impact frame flash (impac7-9). */
+    public static void onFacingDapImpact() {
+        facingDapImpactActive = true;
+        facingDapImpactStartMs = System.currentTimeMillis();
+    }
 
     public static void triggerDapBadBlock() { }
 
