@@ -2,23 +2,35 @@ package com.cooptest.client;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
- * STAGE 6 STUB — Heaven Dap client feedback (white screen overlay, sound ducking,
- * impact flash). Signatures match the HeavenDapPayloads receivers so the Heaven-dap
- * server logic can drive them once the ChargedDap core is ported; the visual/audio
- * bodies land with the client-render stage (HeavenWhiteOverlay etc.).
+ * Heaven Dap client feedback. Drives {@link HeavenWhiteOverlay} from the HeavenDap
+ * S2C signals. Ported to Forge 1.20.1 (visual only; sound ducking omitted).
  */
 @OnlyIn(Dist.CLIENT)
 public final class HeavenDapClientHandler {
 
     private HeavenDapClientHandler() {}
 
-    public static void onHeavenDapStart() { }
+    public static void register() {
+        MinecraftForge.EVENT_BUS.register(HeavenDapClientHandler.class);
+    }
 
-    public static void onHeavenDapEnd() { }
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        HeavenWhiteOverlay.tick();
+    }
 
-    public static void onRestoreVolume() { }
+    /** Impact flash — begin the white overlay sequence. */
+    public static void onHeavenImpact() { HeavenWhiteOverlay.start(); }
 
-    public static void onHeavenImpact() { }
+    public static void onHeavenDapStart() { if (!HeavenWhiteOverlay.isActive()) HeavenWhiteOverlay.start(); }
+
+    public static void onHeavenDapEnd() { HeavenWhiteOverlay.stop(); }
+
+    public static void onRestoreVolume() { /* sound ducking not ported */ }
 }

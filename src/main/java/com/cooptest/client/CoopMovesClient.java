@@ -46,6 +46,8 @@ public final class CoopMovesClient {
             HuddleClientHandler.register();
             // Stage 4 (Grab group): ground-pound client state
             GroundPoundClientHandler.register();
+            // Heaven-dap white overlay driver
+            HeavenDapClientHandler.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
@@ -69,5 +71,6 @@ public final class CoopMovesClient {
     public static void onRegisterOverlays(final RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
         event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
+        event.registerAboveAll("heaven_white_overlay", HeavenWhiteOverlay.HUD);
     }
 }
