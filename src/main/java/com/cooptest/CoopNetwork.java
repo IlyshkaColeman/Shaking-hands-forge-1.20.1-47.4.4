@@ -91,6 +91,6 @@ public final class CoopNetwork {
         DapFusionHandler.registerMessages();
         FallDapHandler.registerMessages();
         DapHoldHandler.registerMessages();
-        // Stage 4 (remaining): DapFusionHandler(full), ChargedDapHandler core, Slap ...
+        SlapHandler.registerMessages();
     }
 }
