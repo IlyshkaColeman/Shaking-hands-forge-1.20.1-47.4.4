@@ -93,5 +93,6 @@ public final class CoopNetwork {
         DapHoldHandler.registerMessages();
         SlapHandler.registerMessages();
         HighFiveHugHandler.registerMessages();
+        HuddleHandler.registerMessages();
     }
 }

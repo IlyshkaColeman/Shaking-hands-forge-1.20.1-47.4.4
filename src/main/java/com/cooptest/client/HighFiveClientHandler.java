@@ -1,6 +1,7 @@
 package com.cooptest.client;
 
 import com.cooptest.HighFiveHandler;
+import com.cooptest.QTEManager;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -47,6 +48,7 @@ public final class HighFiveClientHandler {
 
     private static long flashStartTime = 0;
     private static int currentTier = 0;
+    private static long lastHighFiveHitMs = 0;
 
     private static final Map<UUID, Boolean> raisedHands = new HashMap<>();
     private static final Map<UUID, Long> highFiveAnimStart = new HashMap<>();
@@ -83,12 +85,15 @@ public final class HighFiveClientHandler {
 
         boolean isKeyPressed = highFiveKey.isDown();
         if (isKeyPressed && !wasKeyPressed) {
-            // STAGE 4: QTE / Fusion / combo-window / hug-hold(F) routing goes here.
-            if (!player.getMainHandItem().isEmpty()) {
+            // H is shared: answer an open QTE / fusion window before raising a hand.
+            if (QTEClientHandler.isActive()) {
+                QTEClientHandler.handleKeyPress("H");
+            } else if (FusionClientHandler.isQTEOpen()) {
+                QTEManager.sendButtonPress("H");
+            } else if (!player.getMainHandItem().isEmpty()) {
                 player.displayClientMessage(Component.literal("§cHands must be empty for high five!"), true);
             } else {
                 raisedHands.put(myId, true);
-                // STAGE 4: right-click held -> SikeRequest; here we always send a plain request.
                 HighFiveHandler.sendHighFiveRequest();
             }
         }
@@ -128,6 +133,7 @@ public final class HighFiveClientHandler {
         highFiveAnimStart.put(player2, now);
         if (myId.equals(player1) || myId.equals(player2)) {
             flashStartTime = now;
+            lastHighFiveHitMs = now;
             currentTier = tier;
             client.player.swing(InteractionHand.MAIN_HAND);
             String message = switch (tier) {
@@ -144,6 +150,11 @@ public final class HighFiveClientHandler {
 
     public static boolean hasHandRaised(UUID playerId) {
         return raisedHands.getOrDefault(playerId, false);
+    }
+
+    /** True for ~3s after the local player's high-five connects (hug window). */
+    public static boolean isInHugOpportunityWindow() {
+        return System.currentTimeMillis() - lastHighFiveHitMs < 3000;
     }
 
     public static KeyMapping getHighFiveKey() {
