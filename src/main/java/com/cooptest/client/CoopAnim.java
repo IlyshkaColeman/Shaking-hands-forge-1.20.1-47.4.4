@@ -12,6 +12,8 @@ import dev.kosmx.playerAnim.minecraftApi.PlayerAnimationRegistry;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.Set;
+
 /**
  * Foundational KosmX animation primitive for the port.
  *
@@ -55,20 +57,63 @@ public final class CoopAnim {
                 PlayerAnimationAccess.getPlayerAssociatedData(player).get(LAYER_ID);
     }
 
+    // ---- per-pose first-person configuration (which arms/items show in 1st person) ----
+    // Only these interaction animations show the third-person arms in first person; every
+    // other pose keeps vanilla first-person arms (FirstPersonMode.NONE). Mirrors the
+    // Fabric FirstPersonAnimationTest interaction table.
+
+    /** Right arm + right item (dap / high-five hit / perfect dap / fire dap family). */
+    private static final Set<String> FP_RIGHT = Set.of(
+            "dap_charge", "dap_charge_idle", "dap_hit", "dap_hit_weak", "dap_hit_bad", "dap_hit_face",
+            "dap_high", "dapping", "dapping_end", "dap_down", "dap_loop", "dap_loop_end",
+            "highfive_start", "highfive_hit", "highfive_dap",
+            "perfect_dap_hit", "perfect_dap_hitp1", "perfect_dap_hitp2",
+            "perfect_dap_extandp1", "perfect_dap_extandp2",
+            "perfect_dap_extande_myboyp1", "perfect_dap_extande_myboyp2", "perfect_dap_extand_both",
+            "perfect_dap_hitcombo", "perfect_dap_hitcombo_end",
+            "fire_dap_charge", "fire_dap_charge_idle", "fire_dap_hit", "fire_dap_hit_perfect",
+            "fire_dap_hitp1", "fire_dap_hitp2", "heaven_dap", "heave_dap");
+    /** Right arm, no item (slap). */
+    private static final Set<String> FP_RIGHT_NOITEM = Set.of("slap", "slap_front");
+    /** Both arms, no item (kick / drop-kick). */
+    private static final Set<String> FP_BOTH_NOITEM = Set.of("kick", "drop_kick");
+    /** Both arms + items (grab/hold/throw, hug, push, clap, high-five combo). */
+    private static final Set<String> FP_BOTH = Set.of(
+            "grab_ready", "grab_ready_idle", "grab_holding", "grab_holding_charge", "grab_holding_charge_idle",
+            "grab_throw", "hug_start", "hugging", "hugging2", "hugend", "highfive_hug", "highfive_hug2",
+            "highfive_hitcombo", "push", "push_start", "push_idle", "clap", "clapspam", "clap_strong");
+
+    private static final FirstPersonConfiguration CFG_RIGHT = new FirstPersonConfiguration(true, false, true, false);
+    private static final FirstPersonConfiguration CFG_RIGHT_NOITEM = new FirstPersonConfiguration(true, false, false, false);
+    private static final FirstPersonConfiguration CFG_BOTH_NOITEM = new FirstPersonConfiguration(true, true, false, false);
+    private static final FirstPersonConfiguration CFG_BOTH = new FirstPersonConfiguration(true, true, true, true);
+
+    private static boolean isFp(String path) {
+        return FP_RIGHT.contains(path) || FP_RIGHT_NOITEM.contains(path)
+                || FP_BOTH_NOITEM.contains(path) || FP_BOTH.contains(path);
+    }
+
+    private static FirstPersonConfiguration fpConfig(String path) {
+        if (FP_RIGHT.contains(path)) return CFG_RIGHT;
+        if (FP_RIGHT_NOITEM.contains(path)) return CFG_RIGHT_NOITEM;
+        if (FP_BOTH_NOITEM.contains(path)) return CFG_BOTH_NOITEM;
+        return CFG_BOTH;
+    }
+
     /**
      * Plays the animation with the given id on the player (no-op if unavailable).
-     * Wrapped in an {@link FpAnimationPlayer} so the animation also renders on the
-     * local player's arms in first person (clap, holding, dap, hug, ...).
+     * Interaction animations are wrapped so they render on the local player's arms in
+     * first person with a per-pose arm/item configuration; other poses keep vanilla
+     * first-person arms.
      */
     public static void play(AbstractClientPlayer player, ResourceLocation animId) {
         ModifierLayer<IAnimation> layer = getLayer(player);
         if (layer == null) return;
         var anim = PlayerAnimationRegistry.getAnimation(animId);
         if (anim == null) return;
-        layer.setAnimation(new FpAnimationPlayer(
-                anim,
-                FirstPersonMode.THIRD_PERSON_MODEL,
-                new FirstPersonConfiguration(true, true, true, true)));
+        String path = animId.getPath();
+        FirstPersonMode mode = isFp(path) ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
+        layer.setAnimation(new FpAnimationPlayer(anim, mode, fpConfig(path)));
     }
 
     /** Stops any animation currently playing on the player's layer. */
