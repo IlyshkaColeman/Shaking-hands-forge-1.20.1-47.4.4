@@ -23,6 +23,7 @@ public final class HeavenDapClientHandler {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         HeavenWhiteOverlay.tick();
+        CoopImpactHandler.tick();
     }
 
     /** Impact flash — begin the white overlay sequence. */

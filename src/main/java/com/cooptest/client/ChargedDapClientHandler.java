@@ -432,6 +432,7 @@ public final class ChargedDapClientHandler {
         if (!playerFrozen) return;
         perfectDapImpactFrame = 1;
         perfectDapImpactFrameStartTime = System.currentTimeMillis();
+        CoopImpactHandler.start(6, 33); // white/black player silhouette flash
     }
 
     /** Facing-dap impact frame flash (impac7-9). */

@@ -5,6 +5,7 @@ import com.cooptest.GrabInputHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -79,5 +80,11 @@ public final class CoopMovesClient {
         event.registerAboveAll("spin_hud", SpinClientHandler.HUD);
         event.registerAboveAll("meteor_hud", MeteorStrikeClientHandler.HUD);
         event.registerAboveAll("kick_hit_flash", KickClientHandler.HUD);
+    }
+
+    /** Impact-silhouette core shaders (mod event bus, client dist). */
+    @SubscribeEvent
+    public static void onRegisterShaders(final RegisterShadersEvent event) {
+        CoopImpactRenderType.onRegisterShaders(event);
     }
 }
