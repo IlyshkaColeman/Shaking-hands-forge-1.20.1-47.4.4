@@ -127,6 +127,50 @@ public final class ChargedDapHandler {
     private static final Map<UUID, Long> fireDapComboFreezeEnd = new HashMap<>();
     private static final Map<UUID, ArmorStand> fireDapArmorStands = new HashMap<>();
     private static final Map<UUID, FireDapScheduledEvent> pendingFireArmImpacts = new HashMap<>();
+    private static final Map<UUID, FireDapScheduledEvent> pendingFireTornadoSpawns = new HashMap<>();
+
+    // ---- restored top-tier cosmetic VFX systems ----
+    private static long auraBeamStartTime = 0;
+    private static boolean auraBeamsActive = false;
+    private static UUID auraBeamPlayer1 = null, auraBeamPlayer2 = null;
+
+    private static long tornadoStartTime = 0;
+    private static boolean tornadoActive = false;
+    private static Vec3 tornadoCenter = null;
+    private static ServerLevel tornadoWorld = null;
+
+    private static final class TornadoSwirl {
+        final Vec3 center; final ServerLevel world; double angle, height, radius; int age;
+        TornadoSwirl(ServerLevel w, Vec3 c, double a, double r) { world = w; center = c; angle = a; radius = r; }
+        boolean tick() {
+            height += 0.2; angle += 18;
+            if (height < 30) radius += 0.08; else radius -= 0.05;
+            double x = center.x + Math.cos(Math.toRadians(angle)) * radius;
+            double z = center.z + Math.sin(Math.toRadians(angle)) * radius;
+            double y = center.y + height;
+            world.sendParticles(ParticleTypes.FLAME, x, y, z, 8, 0.3, 0.3, 0.3, 0.08);
+            world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x, y, z, 4, 0.2, 0.2, 0.2, 0.05);
+            if (height % 5 < 0.5) {
+                world.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, 6, 0.4, 0.4, 0.4, 0.06);
+                world.sendParticles(ParticleTypes.LAVA, x, y, z, 3, 0.2, 0.2, 0.2, 0.02);
+            }
+            age++;
+            return height < 60 && age < 60;
+        }
+    }
+    private static final List<TornadoSwirl> activeTornadoSwirls = new ArrayList<>();
+
+    private static final class SaturnRing {
+        final Vec3 center; final long startTime, endTime;
+        SaturnRing(Vec3 c, long s) { center = c; startTime = s; endTime = s + 20000; }
+    }
+    private static final List<SaturnRing> activeSaturnRings = new ArrayList<>();
+
+    private static final class HeavenParticleSpawner {
+        final ServerLevel world; final Vec3 pos; final long endTime;
+        HeavenParticleSpawner(ServerLevel w, Vec3 p, long dur) { world = w; pos = p; endTime = System.currentTimeMillis() + dur; }
+    }
+    private static final List<HeavenParticleSpawner> activeHeavenParticles = new ArrayList<>();
 
     private static final Set<UUID> highFivePartners = new HashSet<>();
 
@@ -553,6 +597,75 @@ public final class ChargedDapHandler {
         while (ait.hasNext()) {
             FireDapScheduledEvent ev = ait.next().getValue();
             if (now >= ev.executeTime) { executeFireArmImpact(ev.p1, ev.p2); ait.remove(); }
+        }
+
+        // scheduled fire tornado spawns
+        Iterator<Map.Entry<UUID, FireDapScheduledEvent>> tit = pendingFireTornadoSpawns.entrySet().iterator();
+        while (tit.hasNext()) {
+            FireDapScheduledEvent ev = tit.next().getValue();
+            if (now >= ev.executeTime) { spawnFireTornado(ev.p1, ev.p2); tit.remove(); }
+        }
+
+        // aura beams (divine flame combo)
+        if (auraBeamsActive) {
+            long elapsed = now - auraBeamStartTime;
+            if (elapsed < 4000) {
+                ServerPlayer ap1 = server.getPlayerList().getPlayer(auraBeamPlayer1);
+                ServerPlayer ap2 = server.getPlayerList().getPlayer(auraBeamPlayer2);
+                if (ap1 != null) spawnAnimatedAuraBeam(ap1, elapsed);
+                if (ap2 != null) spawnAnimatedAuraBeam(ap2, elapsed);
+            } else auraBeamsActive = false;
+        }
+
+        // fire tornado: spawn swirls, tick them, damage entities at the wall
+        if (tornadoActive && tornadoCenter != null && tornadoWorld != null) {
+            long elapsed = now - tornadoStartTime;
+            if (elapsed < 5000) {
+                if (server.getTickCount() % 4 == 0) {
+                    for (int i = 0; i < 12; i++)
+                        activeTornadoSwirls.add(new TornadoSwirl(tornadoWorld, tornadoCenter, i * 30, 3.0 + Math.random() * 2));
+                }
+            } else { tornadoActive = false; activeTornadoSwirls.clear(); }
+            activeTornadoSwirls.removeIf(sw -> !sw.tick());
+            double tornadoRadius = 30;
+            AABB tb = new AABB(tornadoCenter.x - tornadoRadius, tornadoCenter.y, tornadoCenter.z - tornadoRadius,
+                    tornadoCenter.x + tornadoRadius, tornadoCenter.y + 70, tornadoCenter.z + tornadoRadius);
+            for (Entity entity : tornadoWorld.getEntities((Entity) null, tb)) {
+                if (entity.getUUID().equals(auraBeamPlayer1) || entity.getUUID().equals(auraBeamPlayer2)) continue;
+                double dx = entity.getX() - tornadoCenter.x, dz = entity.getZ() - tornadoCenter.z;
+                double d = Math.sqrt(dx * dx + dz * dz);
+                if (d >= tornadoRadius - 2 && d <= tornadoRadius + 2) {
+                    Vec3 dir = new Vec3(dx, 0, dz).normalize();
+                    entity.setDeltaMovement(dir.x * 2.0, 0.5, dir.z * 2.0);
+                    entity.hurtMarked = true;
+                    if (entity instanceof LivingEntity le) le.hurt(tornadoWorld.damageSources().magic(), 5.0f);
+                }
+            }
+        }
+
+        // saturn rings
+        Iterator<SaturnRing> rit = activeSaturnRings.iterator();
+        while (rit.hasNext()) {
+            SaturnRing ring = rit.next();
+            if (now >= ring.endTime) { rit.remove(); continue; }
+            double rotation = ((now - ring.startTime) / 100.0) * 360.0;
+            ServerLevel rw = server.overworld();
+            for (double angle = 0; angle < 360; angle += 5) {
+                double rad = Math.toRadians(angle + rotation);
+                double x = ring.center.x + Math.cos(rad) * 50.0, z = ring.center.z + Math.sin(rad) * 50.0;
+                rw.sendParticles(ParticleTypes.END_ROD, x, ring.center.y, z, 1, 0.1, 0.1, 0.1, 0.01);
+                rw.sendParticles(ParticleTypes.ELECTRIC_SPARK, x, ring.center.y + 0.5, z, 1, 0.05, 0.05, 0.05, 0);
+            }
+        }
+
+        // heaven particle cascade
+        Iterator<HeavenParticleSpawner> hpit = activeHeavenParticles.iterator();
+        while (hpit.hasNext()) {
+            HeavenParticleSpawner sp = hpit.next();
+            if (now >= sp.endTime) { hpit.remove(); continue; }
+            sp.world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, sp.pos.x, sp.pos.y, sp.pos.z, 2, 3, 3, 3, 0);
+            sp.world.sendParticles(ParticleTypes.FIREWORK, sp.pos.x, sp.pos.y, sp.pos.z, 10, 5, 5, 5, 0.3);
+            sp.world.sendParticles(ParticleTypes.END_ROD, sp.pos.x, sp.pos.y, sp.pos.z, 5, 4, 4, 4, 0.2);
         }
 
         // fire-dap combo freeze expiry
@@ -1069,6 +1182,11 @@ public final class ChargedDapHandler {
         boolean bothHeavenReady = heavenReady.contains(p1.getUUID()) && heavenReady.contains(p2.getUUID());
         if (bothHeavenReady && perfectHit) {
             startHeavenDap(p1, p2, pos, world);
+            activeHeavenParticles.add(new HeavenParticleSpawner(world, pos, 30000));
+            activeSaturnRings.add(new SaturnRing(pos, System.currentTimeMillis()));
+            spawnExpandingLegendarySonicBoom(world, pos);
+            spawnStarBurst(world, pos, 100, 5.0);
+            createMassiveShockwave(world, pos, p1, p2, 50.0, 10.0);
             return;
         }
         if (bothCharging) {
@@ -1093,6 +1211,7 @@ public final class ChargedDapHandler {
             world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 2.0f, 1.0f);
             world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
             world.sendParticles(ParticleTypes.FIREWORK, pos.x, pos.y, pos.z, 40, 0.5, 0.5, 0.5, 0.25);
+            spawnStarBurst(world, pos, 30, 1.0);
             if (!CoopMovesConfig.get().noGriefMode)
                 world.explode(null, pos.x, pos.y, pos.z, 5.0f, Level.ExplosionInteraction.MOB);
             applyKnockback(p1, p2, pos, 2.0);
@@ -1120,6 +1239,8 @@ public final class ChargedDapHandler {
         world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, pos.x, pos.y + 1.0, pos.z, 15, 0.2, 0.2, 0.2, 0.15);
         world.sendParticles(ParticleTypes.LAVA, pos.x, pos.y + 1.0, pos.z, 8, 0.3, 0.3, 0.3, 0);
         world.sendParticles(ParticleTypes.FLASH, pos.x, pos.y + 1.0, pos.z, 3, 0, 0, 0, 0);
+        spawnFireDapSonicBoom(world, pos);
+        spawnStarBurst(world, pos, 30, 1.0);
         createFireShockwave(world, pos, p1, p2);
 
         p1.displayClientMessage(Component.literal(perfectHit ? "§c§l🔥 PERFECT FIRE DAP! 🔥" : "§c§l🔥 FIRE DAP! 🔥"), true);
@@ -1218,7 +1339,13 @@ public final class ChargedDapHandler {
         p1.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 100, 255, false, false));
         p2.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 100, 255, false, false));
         p2.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 100, 255, false, false));
+        spawnVerticalFireWalls(p1, p2);
+        auraBeamsActive = true;
+        auraBeamStartTime = now;
+        auraBeamPlayer1 = id1;
+        auraBeamPlayer2 = id2;
         pendingFireArmImpacts.put(id1, new FireDapScheduledEvent(p1, p2, now + FIRE_COMBO_ARM_IMPACT));
+        pendingFireTornadoSpawns.put(id1, new FireDapScheduledEvent(p1, p2, now + 1460));
     }
 
     private static void executeFireArmImpact(ServerPlayer p1, ServerPlayer p2) {
@@ -1296,6 +1423,8 @@ public final class ChargedDapHandler {
         world.sendParticles(ParticleTypes.FLASH, midpoint.x, midpoint.y, midpoint.z, 5, 0, 0, 0, 0);
         world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, midpoint.x, midpoint.y, midpoint.z, 3, 0.5, 0.5, 0.5, 0);
         world.sendParticles(ParticleTypes.END_ROD, midpoint.x, midpoint.y, midpoint.z, 50, 1.0, 1.0, 1.0, 0.3);
+        spawnSonicBoomCircles(world, midpoint);
+        activeHeavenParticles.add(new HeavenParticleSpawner(world, midpoint, 30000));
 
         heavenPlayers.put(id1, new HeavenDapData(midpoint, world, now, id2));
         heavenPlayers.put(id2, new HeavenDapData(midpoint, world, now, id1));
@@ -1326,6 +1455,167 @@ public final class ChargedDapHandler {
     }
 
     // ================================================================ helpers
+    // ================================================================ restored cosmetic VFX
+    private static void spawnStarBurst(ServerLevel world, Vec3 pos, int rays, double spread) {
+        for (int i = 0; i < rays; i++) {
+            double angle = (2 * Math.PI * i) / rays;
+            world.sendParticles(ParticleTypes.CRIT, pos.x, pos.y, pos.z, 2, Math.cos(angle) * spread, 0.2, Math.sin(angle) * spread, 0.15);
+        }
+    }
+
+    private static void createMassiveShockwave(ServerLevel world, Vec3 pos, ServerPlayer p1, ServerPlayer p2, double radius, double strength) {
+        AABB box = new AABB(pos, pos).inflate(radius);
+        for (Entity entity : world.getEntities((Entity) null, box)) {
+            if (entity == p1 || entity == p2) continue;
+            double dist = entity.position().distanceTo(pos);
+            if (dist > radius || dist < 0.5) continue;
+            double s = (1.0 - dist / radius) * strength;
+            Vec3 dir = entity.position().subtract(pos).normalize();
+            entity.setDeltaMovement(entity.getDeltaMovement().add(dir.x * s * 2.0, s * 1.5, dir.z * s * 2.0));
+            entity.hurtMarked = true;
+        }
+        world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.0f, 0.5f);
+        world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.WITHER_DEATH, SoundSource.PLAYERS, 3.0f, 0.6f);
+    }
+
+    private static void spawnAnimatedAuraBeam(ServerPlayer player, long elapsed) {
+        ServerLevel world = player.serverLevel();
+        Vec3 pp = player.position();
+        double phase = (elapsed % 1000) / 1000.0;
+        for (int y = 0; y < 70; y++) {
+            double cur = pp.y + y;
+            double coreRad = Math.toRadians((y * 20 + elapsed * 0.5) % 360);
+            double cx = pp.x + Math.cos(coreRad) * 0.3, cz = pp.z + Math.sin(coreRad) * 0.3;
+            world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, cx, cur, cz, 1, 0.05, 0.05, 0.05, 0.01);
+            double midRad = Math.toRadians((y * 15 - elapsed * 0.3) % 360);
+            world.sendParticles(ParticleTypes.FLAME, pp.x + Math.cos(midRad) * 0.6, cur, pp.z + Math.sin(midRad) * 0.6, 2, 0.1, 0.1, 0.1, 0.02);
+            if (y % 5 == 0) {
+                double waveOffset = Math.sin((y / 70.0 + phase) * Math.PI * 2) * 0.5;
+                world.sendParticles(ParticleTypes.END_ROD, pp.x + waveOffset, cur, pp.z, 1, 0.1, 0.1, 0.1, 0.02);
+            }
+        }
+        for (double angle = 0; angle < 360; angle += 10) {
+            double rad = Math.toRadians(angle + elapsed * 0.5);
+            double x = pp.x + Math.cos(rad) * 3.0, z = pp.z + Math.sin(rad) * 3.0;
+            world.sendParticles(ParticleTypes.FLAME, x, pp.y + 0.1, z, 3, 0.1, 0.1, 0.1, 0.05);
+            world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x, pp.y + 0.1, z, 2, 0.1, 0.1, 0.1, 0.03);
+        }
+    }
+
+    private static void spawnVerticalFireWalls(ServerPlayer p1, ServerPlayer p2) {
+        ServerLevel world = p1.serverLevel();
+        Vec3 mid = p1.position().add(p2.position()).scale(0.5);
+        double wallDistance = 5.0; int wallHeight = 50, wallLength = 10;
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] d : dirs) {
+            for (int a = -wallLength / 2; a <= wallLength / 2; a++) {
+                if (Math.abs(a) <= 1) continue;
+                for (int y = 0; y < wallHeight; y += 2) {
+                    double wx = mid.x + (d[0] != 0 ? d[0] * wallDistance : a);
+                    double wz = mid.z + (d[1] != 0 ? d[1] * wallDistance : a);
+                    world.sendParticles(ParticleTypes.FLAME, wx, mid.y + y, wz, 8, 0.3, 0.3, 0.3, 0.08);
+                    world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, wx, mid.y + y, wz, 4, 0.2, 0.2, 0.2, 0.05);
+                }
+            }
+        }
+    }
+
+    private static void spawnFireTornado(ServerPlayer p1, ServerPlayer p2) {
+        ServerLevel world = p1.serverLevel();
+        Vec3 mid = p1.position().add(p2.position()).scale(0.5);
+        tornadoStartTime = System.currentTimeMillis();
+        tornadoActive = true;
+        tornadoCenter = mid;
+        tornadoWorld = world;
+        activeTornadoSwirls.clear();
+        world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 4.0f, 0.4f);
+        world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.WITHER_SPAWN, SoundSource.PLAYERS, 3.0f, 0.6f);
+    }
+
+    private static void spawnExpandingRing(ServerLevel world, Vec3 center, double startRadius, double endRadius, int durationMs) {
+        int steps = 20;
+        double radiusStep = (endRadius - startRadius) / steps;
+        long stepDuration = durationMs / steps;
+        new Thread(() -> {
+            try {
+                for (int step = 0; step < steps; step++) {
+                    final double r = startRadius + radiusStep * step;
+                    world.getServer().execute(() -> {
+                        int pc = (int) (r * 20);
+                        for (int i = 0; i < pc; i++) {
+                            double a = Math.toRadians((360.0 / pc) * i);
+                            double x = center.x + Math.cos(a) * r, z = center.z + Math.sin(a) * r;
+                            world.sendParticles(ParticleTypes.CLOUD, x, center.y + 0.5, z, 0, Math.cos(a) * 0.4, 0.0, Math.sin(a) * 0.4, 0.6);
+                            world.sendParticles(ParticleTypes.WHITE_ASH, x, center.y + 0.5, z, 0, Math.cos(a) * 0.4, 0.0, Math.sin(a) * 0.4, 0.5);
+                        }
+                    });
+                    Thread.sleep(stepDuration);
+                }
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
+    private static void spawnExpandingFireRing(ServerLevel world, Vec3 center, double startRadius, double endRadius, int durationMs) {
+        int steps = 15;
+        double radiusStep = (endRadius - startRadius) / steps;
+        long stepDuration = durationMs / steps;
+        new Thread(() -> {
+            try {
+                for (int step = 0; step < steps; step++) {
+                    final double r = startRadius + radiusStep * step;
+                    world.getServer().execute(() -> {
+                        int pc = (int) (r * 15);
+                        for (int i = 0; i < pc; i++) {
+                            double a = Math.toRadians((360.0 / pc) * i);
+                            double x = center.x + Math.cos(a) * r, z = center.z + Math.sin(a) * r;
+                            world.sendParticles(ParticleTypes.FLAME, x, center.y + 0.5, z, 0, Math.cos(a) * 0.35, 0.0, Math.sin(a) * 0.35, 0.5);
+                            world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x, center.y + 0.5, z, 0, Math.cos(a) * 0.28, 0.0, Math.sin(a) * 0.28, 0.4);
+                        }
+                    });
+                    Thread.sleep(stepDuration);
+                }
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
+    private static void spawnExpandingLegendarySonicBoom(ServerLevel world, Vec3 center) {
+        new Thread(() -> {
+            try {
+                spawnExpandingRing(world, center, 1.0, 6.0, 300); Thread.sleep(200);
+                spawnExpandingRing(world, center, 6.0, 15.0, 400); Thread.sleep(200);
+                spawnExpandingRing(world, center, 15.0, 30.0, 500);
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
+    private static void spawnSonicBoomCircles(ServerLevel world, Vec3 pos) {
+        new Thread(() -> {
+            try {
+                for (int circle = 0; circle < 3; circle++) {
+                    final double baseRadius = 2.0 + circle * 2.0;
+                    world.getServer().execute(() -> {
+                        for (int i = 0; i < 60; i++) {
+                            double a = Math.toRadians(i * 6);
+                            double x = pos.x + Math.cos(a) * baseRadius, z = pos.z + Math.sin(a) * baseRadius;
+                            world.sendParticles(ParticleTypes.WHITE_ASH, x, pos.y + 0.5, z, 3, 0.1, 0.3, 0.1, 0.05);
+                            world.sendParticles(ParticleTypes.CLOUD, x, pos.y + 0.5, z, 2, 0.05, 0.2, 0.05, 0.02);
+                        }
+                    });
+                    Thread.sleep(100);
+                }
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
+    private static void spawnFireDapSonicBoom(ServerLevel world, Vec3 pos) {
+        new Thread(() -> {
+            try {
+                spawnExpandingFireRing(world, pos, 2.0, 10.0, 250); Thread.sleep(100);
+                spawnExpandingFireRing(world, pos, 5.0, 15.0, 350);
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
     private static void spawnFireHandParticles(ServerPlayer player, float fireLvl) {
         if (Math.random() > 0.33) return;
         ServerLevel world = player.serverLevel();
@@ -1531,7 +1821,7 @@ public final class ChargedDapHandler {
         if (pStand != null && !pStand.isRemoved()) pStand.discard();
         fireDapStartTime.remove(uuid); fireDapPartner.remove(uuid); inFireDapHit.remove(uuid);
         fireCircleSpawned.remove(uuid); fireDapComboRequestTime.remove(uuid); fireDapComboFreezeEnd.remove(uuid);
-        pendingFireArmImpacts.remove(uuid); fireComboActive.remove(uuid);
+        pendingFireArmImpacts.remove(uuid); pendingFireTornadoSpawns.remove(uuid); fireComboActive.remove(uuid);
         ArmorStand fStand = fireDapArmorStands.remove(uuid);
         if (fStand != null && !fStand.isRemoved()) fStand.discard();
         heavenPlayers.remove(uuid); heavenReady.remove(uuid); fireMaxedStartTime.remove(uuid);
