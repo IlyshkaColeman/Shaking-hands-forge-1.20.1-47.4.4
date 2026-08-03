@@ -34,6 +34,10 @@ public final class CoopServerTick {
         if (cfg.enableHighFiveHug) {
             HighFiveHugHandler.tick(server);
         }
+        // QTE-hug runs whenever high-five is on (its window opens from a high-five).
+        if (cfg.enableHighFive) {
+            HighFiveQTEHugHandler.tick(server);
+        }
         if (cfg.enableMarioJump) {
             MarioJumpHandler.tick(server);
         }

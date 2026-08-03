@@ -3,6 +3,8 @@ package com.cooptest.client;
 import com.cooptest.ChargedDapHandler;
 import com.cooptest.CoopMovesConfig;
 import com.cooptest.CoopNetwork;
+import com.cooptest.DapFusionHandler;
+import com.cooptest.QTEManager;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.KeyMapping;
@@ -129,7 +131,16 @@ public final class ChargedDapClientHandler {
         // --- Dap charge (G): press to charge, release to dap ---
         boolean dapDown = dapKey.isDown();
         if (dapDown && !wasDapKeyDown) {
-            if (onCooldown) {
+            // G is shared: answer an open QTE / fusion window before starting a charge.
+            if (QTEClientHandler.isActive()) {
+                QTEClientHandler.handleKeyPress("G");
+            } else if (FusionClientHandler.isQTEOpen()) {
+                QTEManager.sendButtonPress("G");
+            } else if (FusionClientHandler.isGWindowOpen()) {
+                DapFusionHandler.sendGPress();
+            } else if (playerFrozen) {
+                // scripted freeze (perfect dap / hug): swallow the press.
+            } else if (onCooldown) {
                 long remaining = (whiffCooldownEnd - System.currentTimeMillis()) / 100;
                 player.displayClientMessage(Component.literal("§cDap on cooldown! " + (remaining / 10.0) + "s"), true);
             } else if (!player.getMainHandItem().isEmpty()) {

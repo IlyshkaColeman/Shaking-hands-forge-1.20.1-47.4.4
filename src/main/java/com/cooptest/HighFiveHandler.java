@@ -285,8 +285,23 @@ public final class HighFiveHandler {
         PoseNetworking.broadcastAnimState(player1, 20);
         PoseNetworking.broadcastAnimState(player2, 20);
 
-        // Open the hold-to-hug window (F) after a successful high-five.
-        if (CoopMovesConfig.get().enableHighFiveHug) HighFiveHugHandler.startHugHold(player1, player2);
+        // After a high-five: open the G QTE-hug (~250ms); if it isn't entered, fall
+        // back to the hold-to-hug (F) window at 2s. Mirrors the Fabric flow.
+        final ServerPlayer fp1 = player1, fp2 = player2;
+        new Thread(() -> {
+            try { Thread.sleep(250); } catch (InterruptedException ignored) {}
+            fp1.getServer().execute(() -> HighFiveQTEHugHandler.startHugQTE(fp1, fp2));
+        }).start();
+        if (CoopMovesConfig.get().enableHighFiveHug) {
+            new Thread(() -> {
+                try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                fp1.getServer().execute(() -> {
+                    if (!HighFiveQTEHugHandler.isInHugSession(fp1.getUUID())
+                            && !HighFiveQTEHugHandler.isInHugSession(fp2.getUUID()))
+                        HighFiveHugHandler.startHugHold(fp1, fp2);
+                });
+            }).start();
+        }
 
         double speed1 = getMaxRecentSpeed(player1.getUUID());
         double speed2 = getMaxRecentSpeed(player2.getUUID());
