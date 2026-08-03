@@ -160,6 +160,11 @@ public final class GrabInputHandler {
         boolean sneakJustPressed = isSneakPressed && !wasSneakPressed;
         if (sneakJustPressed && isBeingHeld) {
             GrabNetworking.sendEscapeRequest();
+        } else if (sneakJustPressed && !isHolding && !player.isPassenger()
+                && !player.onGround() && pose == PoseState.NONE
+                && com.cooptest.CoopMovesConfig.get().enableGroundPound) {
+            // Ground pound: sneak while airborne to dive.
+            com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
         }
         wasSneakPressed = isSneakPressed;
 

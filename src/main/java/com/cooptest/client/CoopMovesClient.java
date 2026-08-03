@@ -44,6 +44,8 @@ public final class CoopMovesClient {
             HugClientHandler.register();
             // Stage 4 (Huddle group): group F-hold input
             HuddleClientHandler.register();
+            // Stage 4 (Grab group): ground-pound client state
+            GroundPoundClientHandler.register();
             // Clap has no dedicated client handler — it is triggered from
             // GrabInputHandler (V) and animated via CoopAnimationHandler.
 
@@ -66,5 +68,6 @@ public final class CoopMovesClient {
     @SubscribeEvent
     public static void onRegisterOverlays(final RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
+        event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
     }
 }

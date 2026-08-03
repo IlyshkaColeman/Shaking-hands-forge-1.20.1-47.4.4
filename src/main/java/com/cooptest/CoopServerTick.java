@@ -24,7 +24,7 @@ public final class CoopServerTick {
         CoopMovesConfig cfg = CoopMovesConfig.get();
 
         if (cfg.enableGrab) {
-            // Stage 4: if (cfg.enableGroundPound) GroundPoundHandler.tick(server);
+            if (cfg.enableGroundPound) GroundPoundHandler.tick(server);
             GrabMechanic.tick(server);
             if (cfg.enableSpin) SpinHandler.tick(server);
         }
