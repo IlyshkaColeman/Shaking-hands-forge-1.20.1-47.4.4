@@ -80,7 +80,9 @@ public final class HighFiveHandler {
     private static final Map<UUID, Vec3> frozenPositions = new HashMap<>();
     private static final long COMBO_WINDOW_MS = 1000;
     private static final long COMBO_FREEZE_MS = 2250;
-    private static final long COMBO_SECOND_HIT_MS = 1290;
+    // Fires the combo clap impact at the moment the hands actually meet in the
+    // highfive_hitcombo animation (~1.05s), not at the recoil (~1.29s) which felt late.
+    private static final long COMBO_SECOND_HIT_MS = 1050;
     private static final int ANIM_HIT_COMBO = 21;
 
     // sike (fake high-five) state
