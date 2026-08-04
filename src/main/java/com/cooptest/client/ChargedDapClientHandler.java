@@ -64,6 +64,9 @@ public final class ChargedDapClientHandler {
     private static boolean inFireComboWindow = false;
     private static long fireComboWindowStart = 0;
     private static final long FIRE_COMBO_WINDOW_MS = 2200;
+    /** Server only accepts the J press from this point on (mirrors FIRE_J_WINDOW_START).
+     *  Pressing earlier must NOT close the prompt, or the combo becomes impossible. */
+    private static final long FIRE_COMBO_WINDOW_START_MS = 830;
 
     private static long flashStartTime = 0;
     private static int resultTier = 0;
@@ -168,11 +171,14 @@ public final class ChargedDapClientHandler {
 
         // --- Fire combo (J): only meaningful inside the window ---
         boolean fireDown = fireComboKey.isDown();
-        if (fireDown && !wasFireKeyDown) {
-            if (inFireComboWindow) {
+        if (fireDown && !wasFireKeyDown && inFireComboWindow) {
+            long windowElapsed = System.currentTimeMillis() - fireComboWindowStart;
+            if (windowElapsed >= FIRE_COMBO_WINDOW_START_MS) {
+                // Valid window: send the press and close the prompt.
                 CoopNetwork.sendToServer(new ChargedDapHandler.FireDapJPressMsg());
                 inFireComboWindow = false;
             }
+            // Too early: ignore the press but keep the window open so the player can retry.
         }
         wasFireKeyDown = fireDown;
 
