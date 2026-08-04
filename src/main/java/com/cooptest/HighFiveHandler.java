@@ -50,7 +50,8 @@ public final class HighFiveHandler {
     private HighFiveHandler() {}
 
     public static final float HIGH_FIVE_RANGE = 1.6f;
-    public static final long HAND_RAISED_DURATION = 2500;
+    // Hold the raised hand longer so it waits for a partner instead of quickly dropping.
+    public static final long HAND_RAISED_DURATION = 6000;
     public static final long COOLDOWN_MS = 1000;
     public static final long HIGH_FIVE_ANIM_DURATION = 1500;
     public static final long START_ANIM_DELAY_MS = 0;

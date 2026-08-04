@@ -198,12 +198,10 @@ public final class GrabInputHandler {
         } else {
             if (sneakJustPressed && isBeingHeld) {
                 GrabNetworking.sendEscapeRequest();
-            } else if (sneakJustPressed && !isHolding && pose == PoseState.NONE
-                    && !player.isPassenger() && !player.onGround() && !diving
-                    && com.cooptest.CoopMovesConfig.get().enableGroundPound) {
-                // Standalone ground pound: sneak while airborne (not in a grab).
-                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
             }
+            // Standalone ground pound (sneak while just falling, not in a grab) removed on
+            // request — it behaved oddly. Ground pound now only happens from the thrown /
+            // spin (helicopter) flow above.
             if (!isThrownAirborne) spinWasActive = false;
         }
         wasSneakPressed = isSneakPressed;
