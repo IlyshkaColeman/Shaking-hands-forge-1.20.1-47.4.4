@@ -322,7 +322,13 @@ public class CoopAnimationHandler {
         try {
             if (!hasLayer(clientPlayer)) return;
             switch (newPose) {
-                case GRABBED -> animStates.put(playerId, AnimState.NONE);
+                case GRABBED -> {
+                    // Carried player lies in the holder's arms (KosmX lay_down) instead of
+                    // the default passenger sitting pose. Re-applied when returning from the
+                    // human-shield pose too (shield sets pose NONE, back-to-arms sets GRABBED).
+                    CoopAnim.play(clientPlayer, LAY_DOWN_ANIM);
+                    animStates.put(playerId, AnimState.LAY_DOWN);
+                }
                 case GRAB_READY -> {
                     CoopAnim.play(clientPlayer, GRAB_READY_ANIM);
                     if (isLocalPlayer) {
