@@ -75,6 +75,9 @@ public final class CoopServerTick {
             PerfectDapComboHandler.tick(server);
             DapFusionHandler.tick(server);
         }
+        if (cfg.enableSyncDap) {
+            SyncDapHandler.tick(server);
+        }
         if (cfg.enableFallDap) {
             FallDapHandler.tick(server);
         }

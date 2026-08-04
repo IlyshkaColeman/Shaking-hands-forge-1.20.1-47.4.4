@@ -75,6 +75,7 @@ public final class CoopMovesClient {
     @SubscribeEvent
     public static void onRegisterOverlays(final RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
+        event.registerAboveAll("sync_dap_hud", SyncDapClientHandler.HUD);
         event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
         event.registerAboveAll("heaven_white_overlay", HeavenWhiteOverlay.HUD);
         event.registerAboveAll("spin_hud", SpinClientHandler.HUD);

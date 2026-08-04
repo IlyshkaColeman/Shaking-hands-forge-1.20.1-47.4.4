@@ -96,5 +96,6 @@ public final class CoopNetwork {
         HuddleHandler.registerMessages();
         GroundPoundHandler.registerMessages();
         SpinHandler.registerMessages();
+        SyncDapHandler.registerMessages();
     }
 }

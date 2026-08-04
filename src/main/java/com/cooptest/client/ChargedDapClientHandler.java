@@ -5,6 +5,7 @@ import com.cooptest.CoopMovesConfig;
 import com.cooptest.CoopNetwork;
 import com.cooptest.DapFusionHandler;
 import com.cooptest.QTEManager;
+import com.cooptest.SyncDapHandler;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.KeyMapping;
@@ -54,6 +55,7 @@ public final class ChargedDapClientHandler {
     private static boolean wasDapKeyDown = false;
     private static boolean wasFireKeyDown = false;
     private static boolean localCharging = false;
+    private static boolean syncEngaged = false;
     private static long localChargeStartTime = 0;
 
     private static boolean inFaceDapSession = false;
@@ -150,6 +152,11 @@ public final class ChargedDapClientHandler {
                 player.displayClientMessage(Component.literal("§cDap on cooldown! " + (remaining / 10.0) + "s"), true);
             } else if (!player.getMainHandItem().isEmpty()) {
                 player.displayClientMessage(Component.literal("§cMain hand must be empty for charged dap!"), true);
+            } else if (CoopMovesConfig.get().enableSyncDap) {
+                // New synchronized ping-pong dap: engage and extend the hand (waiting pose).
+                syncEngaged = true;
+                CoopNetwork.sendToServer(new SyncDapHandler.SyncHoldMsg());
+                CoopAnimationHandler.startDapCharge(player);
             } else {
                 localCharging = true;
                 localChargeStartTime = System.currentTimeMillis();
@@ -158,7 +165,13 @@ public final class ChargedDapClientHandler {
                 CoopAnimationHandler.startDapCharge(player);
             }
         } else if (!dapDown && wasDapKeyDown) {
-            if (localCharging) {
+            if (syncEngaged) {
+                syncEngaged = false;
+                // Lock the marker where the bar currently is (or -1 if never became active).
+                int marker = SyncDapClientHandler.isActive() ? SyncDapClientHandler.lockAndClose() : -1;
+                CoopNetwork.sendToServer(new SyncDapHandler.SyncLockMsg(marker));
+                CoopAnimationHandler.stopDapChargeLocalOnly(player);
+            } else if (localCharging) {
                 localCharging = false;
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeReleaseMsg());
                 // Stop the local charge pose; the server broadcasts the result animation

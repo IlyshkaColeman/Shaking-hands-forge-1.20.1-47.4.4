@@ -40,6 +40,10 @@ public class CoopMovesConfig {
     public boolean enableDapCombo = true;
     public boolean enableDapHold = true;
     public boolean enableDapFirstPerson = true;
+    /** New synchronized ping-pong skill-check dap (two players catch a moving marker
+     *  inside the perfect/medium zone). When true, G uses this instead of the classic
+     *  hold-to-charge dap. */
+    public boolean enableSyncDap = true;
     public boolean enableFallDap = true;
     public boolean enableFireDap = true;
     public boolean enableHeavenDap = true;

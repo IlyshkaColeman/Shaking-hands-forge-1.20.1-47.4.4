@@ -54,6 +54,7 @@ public final class PlayerCleanupHandler {
         HuddleHandler.cleanup(uuid);
         PushInteractionHandler.pushImmunity.remove(uuid);
         ChargedDapHandler.cleanup(uuid);
+        SyncDapHandler.cleanup(uuid);
         QTEManager.cancelQTE(uuid);
         DapComboChain.cancelCombo(uuid);
         PerfectDapComboHandler.cancelCombo(uuid);
