@@ -176,8 +176,11 @@ public final class SyncDapHandler {
     private static void onLock(ServerPlayer player, int marker) {
         UUID id = player.getUUID();
         if (holding.remove(id) != null) {
-            // Was still waiting for a partner — just cancel the pose.
-            PoseNetworking.broadcastAnimState(player, ANIM_NONE);
+            // Was holding G with no partner engaged. If aiming at another (non-dapping)
+            // player's head, slap them (back / front slap); otherwise drop the pose.
+            if (!SlapHandler.checkSlapOnRelease(player)) {
+                PoseNetworking.broadcastAnimState(player, ANIM_NONE);
+            }
             return;
         }
         if (!pair.containsKey(id)) return;
