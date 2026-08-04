@@ -119,7 +119,7 @@ public final class CoopAnim {
         var anim = PlayerAnimationRegistry.getAnimation(animId);
         if (anim == null) {
             System.out.println("[CoopAnim] ANIMATION NOT FOUND in KosmX registry: " + animId
-                    + " (check assets/testcoop/player_animations/" + animId.getPath() + ".json)");
+                    + " (check assets/testcoop/player_animation/" + animId.getPath() + ".json)");
             return;
         }
         String path = animId.getPath();

@@ -95,6 +95,20 @@ tasks.named('processResources', ProcessResources).configure {
     filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
         expand replaceProperties
     }
+
+    // KosmX PlayerAnimator auto-loads animations ONLY from assets/<ns>/player_animation
+    // (singular). The animation JSONs shipped by the original Fabric mod live in
+    // player_animations (plural, ZigyTheBird PAL convention). Rename the folder at
+    // build time so every animation is registered under testcoop:<file-name>.
+    exclude 'assets/testcoop/player_animations/**'
+    from('src/main/resources/assets/testcoop/player_animations') {
+        // A stray duplicate 'dap _hold.json' (note the space) would produce an invalid
+        // ResourceLocation and break KosmX's whole folder scan; the valid 'dap_hold.json'
+        // is kept. Exclude any file whose name contains a space to be safe.
+        exclude '**/* *'
+        into 'assets/testcoop/player_animation'
+    }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.named('jar', Jar).configure {
