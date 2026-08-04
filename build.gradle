@@ -98,10 +98,10 @@ tasks.named('processResources', ProcessResources).configure {
 
     // KosmX PlayerAnimator auto-loads animations ONLY from assets/<ns>/player_animation
     // (singular). The animation JSONs shipped by the original Fabric mod live in
-    // player_animations (plural, ZigyTheBird PAL convention) and some use a static-pose
-    // shorthand ("rotation": {"vector": [...]}) that KosmX's stricter GeckoLib parser
-    // rejects (crashing the whole load). The fixAnimations task normalises them into
-    // keyframe form and writes them under the correct singular folder name; we copy from
+    // player_animations (plural, ZigyTheBird PAL convention) and many static-pose files
+    // omit "animation_length"; KosmX's GeckoLib parser then rejects them and crashes the
+    // whole load. The fixAnimations task adds a computed "animation_length" wherever it is
+    // missing and writes the files under the correct singular folder name; we copy from
     // there and drop the original plural folder.
     dependsOn 'fixAnimations'
     exclude 'assets/testcoop/player_animations/**'
@@ -109,9 +109,9 @@ tasks.named('processResources', ProcessResources).configure {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
-// Normalise KosmX player animations: rename folder to the singular name KosmX expects and
-// wrap any static "{\"vector\": [...]}" channel into a single "0.0" keyframe so KosmX's
-// GeckoLib deserialiser accepts every file (one bad file otherwise crashes the client).
+// Make every animation JSON parseable by KosmX: rename the folder to the singular name and
+// ensure each animation declares "animation_length" (KosmX throws "Could not recognise
+// GeckoLib animation" otherwise, and one bad file crashes the whole client).
 tasks.register('fixAnimations') {
     def srcDir = file('src/main/resources/assets/testcoop/player_animations')
     def outDir = file("${buildDir}/fixedAnimations/assets/testcoop/player_animation")
@@ -121,24 +121,38 @@ tasks.register('fixAnimations') {
         outDir.mkdirs()
         outDir.eachFile { it.delete() }
         def slurper = new groovy.json.JsonSlurper()
+        def nonTimeKeys = ['vector', 'easing', 'lerp_mode', 'pre', 'post'] as Set
+        def maxTime
+        maxTime = { anim ->
+            double m = 0.0d
+            def bones = anim instanceof Map ? anim['bones'] : null
+            if (bones instanceof Map) {
+                bones.values().each { bone ->
+                    if (bone instanceof Map) {
+                        ['rotation', 'position', 'scale'].each { ch ->
+                            def channel = bone[ch]
+                            if (channel instanceof Map) {
+                                channel.keySet().each { k ->
+                                    if (!nonTimeKeys.contains(k)) {
+                                        try { double t = Double.parseDouble(k as String); if (t > m) m = t } catch (ignored) {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return m
+        }
         srcDir.listFiles().findAll { it.isFile() && it.name.endsWith('.json') }.each { f ->
             if (f.name.contains(' ')) { return } // invalid ResourceLocation, skip the stray dup
             def data = slurper.parse(f)
             def anims = data instanceof Map ? data['animations'] : null
             if (anims instanceof Map) {
                 anims.values().each { anim ->
-                    def bones = anim instanceof Map ? anim['bones'] : null
-                    if (bones instanceof Map) {
-                        bones.values().each { bone ->
-                            if (bone instanceof Map) {
-                                ['rotation', 'position', 'scale'].each { ch ->
-                                    def channel = bone[ch]
-                                    if (channel instanceof Map && channel.containsKey('vector')) {
-                                        bone[ch] = ['0.0': channel]
-                                    }
-                                }
-                            }
-                        }
+                    if (anim instanceof Map && !anim.containsKey('animation_length')) {
+                        double len = maxTime(anim)
+                        anim['animation_length'] = (len > 0.0d) ? len : 0.05d
                     }
                 }
             }
