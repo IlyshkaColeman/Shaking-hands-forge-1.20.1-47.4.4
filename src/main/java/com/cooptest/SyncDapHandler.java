@@ -9,9 +9,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -57,8 +54,8 @@ public final class SyncDapHandler {
     private static final long LOCK_WAIT_MS = 2500;
 
     // zone boundaries on the 0..100 bar (keep in sync with the client HUD)
-    public static final int PERFECT_MIN = 46, PERFECT_MAX = 54;
-    public static final int MEDIUM_MIN = 30, MEDIUM_MAX = 70;
+    public static final int PERFECT_MIN = 42, PERFECT_MAX = 58;
+    public static final int MEDIUM_MIN = 22, MEDIUM_MAX = 78;
 
     /** 2 = perfect cube, 1 = medium band, 0 = basic (outside). */
     public static int zoneOf(int marker) {
@@ -109,10 +106,26 @@ public final class SyncDapHandler {
         }
     }
 
+    /** S2C: tells a client the partner locked their marker (freezes the partner mini-bar). */
+    public record SyncPartnerLockMsg(int marker) {
+        public static void encode(SyncPartnerLockMsg m, FriendlyByteBuf b) { b.writeInt(m.marker); }
+        public static SyncPartnerLockMsg decode(FriendlyByteBuf b) { return new SyncPartnerLockMsg(b.readInt()); }
+        public static void handle(SyncPartnerLockMsg m, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context c = ctx.get();
+            c.enqueueWork(() -> {
+                if (!c.getDirection().getReceptionSide().isServer())
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                            com.cooptest.client.SyncDapClientHandler.onPartnerLock(m.marker()));
+            });
+            c.setPacketHandled(true);
+        }
+    }
+
     public static void registerMessages() {
         CoopNetwork.register(SyncHoldMsg.class, SyncHoldMsg::encode, SyncHoldMsg::decode, SyncHoldMsg::handle);
         CoopNetwork.register(SyncLockMsg.class, SyncLockMsg::encode, SyncLockMsg::decode, SyncLockMsg::handle);
         CoopNetwork.register(SyncActiveMsg.class, SyncActiveMsg::encode, SyncActiveMsg::decode, SyncActiveMsg::handle);
+        CoopNetwork.register(SyncPartnerLockMsg.class, SyncPartnerLockMsg::encode, SyncPartnerLockMsg::decode, SyncPartnerLockMsg::handle);
     }
 
     // ------------------------------------------------------------------ server logic
@@ -168,10 +181,13 @@ public final class SyncDapHandler {
             return;
         }
         if (!pair.containsKey(id)) return;
-        locked.put(id, Math.max(0, Math.min(100, marker)));
+        int m = Math.max(0, Math.min(100, marker));
+        locked.put(id, m);
         UUID pid = pair.get(id);
+        ServerPlayer partner = player.getServer().getPlayerList().getPlayer(pid);
+        // Let the partner's client freeze this player's mini-bar at the locked spot.
+        if (partner != null) CoopNetwork.sendToPlayer(partner, new SyncPartnerLockMsg(m));
         if (locked.containsKey(pid)) {
-            ServerPlayer partner = player.getServer().getPlayerList().getPlayer(pid);
             if (partner != null) evaluate(player, partner);
             else clearPair(id, pid);
         }
@@ -212,65 +228,16 @@ public final class SyncDapHandler {
     }
 
     private static void impact(ServerPlayer a, ServerPlayer b, int tier) {
-        ServerLevel world = a.serverLevel();
-        Vec3 mid = a.position().add(b.position()).scale(0.5).add(0, 1.3, 0);
-        UUID ida = a.getUUID(), idb = b.getUUID();
-
-        String msg;
-        float explosion;
-        double kb;
-        switch (tier) {
-            case 2 -> {
-                PoseNetworking.broadcastAnimState(a, ANIM_PERFECT_DAP_HIT);
-                PoseNetworking.broadcastAnimState(b, ANIM_PERFECT_DAP_HIT);
-                world.playSound(null, mid.x, mid.y, mid.z, ModSounds.EPIC_DAP.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
-                world.sendParticles(ParticleTypes.FLASH, mid.x, mid.y, mid.z, 1, 0, 0, 0, 0);
-                world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, mid.x, mid.y, mid.z, 40, 0.4, 0.4, 0.4, 0.15);
-                world.sendParticles(ParticleTypes.END_ROD, mid.x, mid.y, mid.z, 30, 0.3, 0.3, 0.3, 0.1);
-                msg = "§6§l✋ PERFECT SYNC DAP! ✋";
-                explosion = 4.0f; kb = 1.4;
-            }
-            case 1 -> {
-                PoseNetworking.broadcastAnimState(a, ANIM_DAP_HIT);
-                PoseNetworking.broadcastAnimState(b, ANIM_DAP_HIT);
-                world.playSound(null, mid.x, mid.y, mid.z, ModSounds.DAP_HIT.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
-                world.sendParticles(ParticleTypes.CRIT, mid.x, mid.y, mid.z, 20, 0.3, 0.3, 0.3, 0.15);
-                world.sendParticles(ParticleTypes.CLOUD, mid.x, mid.y, mid.z, 10, 0.3, 0.2, 0.3, 0.05);
-                msg = "§a✋ Good Dap! ✋";
-                explosion = 0f; kb = 0.5;
-            }
-            default -> {
-                PoseNetworking.broadcastAnimState(a, ANIM_DAP_HIT);
-                PoseNetworking.broadcastAnimState(b, ANIM_DAP_HIT);
-                world.playSound(null, mid.x, mid.y, mid.z, ModSounds.DAP_WEAK.get(), SoundSource.PLAYERS, 0.9f, 1.1f);
-                world.sendParticles(ParticleTypes.SMOKE, mid.x, mid.y, mid.z, 5, 0.2, 0.2, 0.2, 0.01);
-                msg = "§7Weak dap...";
-                explosion = 0f; kb = 0.1;
-            }
-        }
-
-        if (explosion > 0f && !CoopMovesConfig.get().noGriefMode) {
-            world.explode(a, mid.x, mid.y, mid.z, explosion, Level.ExplosionInteraction.TNT);
-        } else if (explosion > 0f) {
-            world.explode(a, mid.x, mid.y, mid.z, explosion, Level.ExplosionInteraction.NONE);
-        }
-        applyKnockback(world, a, b, mid, kb);
+        // Reuse the classic dap tier effects (particles, sounds, and — for the green
+        // cube — the perfect-dap impact frames + silhouette shader).
+        ChargedDapHandler.runSyncDap(a, b, tier);
+        String msg = switch (tier) {
+            case 2 -> "§6§l✋ PERFECT SYNC DAP! ✋";
+            case 1 -> "§a✋ Good Dap! ✋";
+            default -> "§7Dap";
+        };
         a.displayClientMessage(Component.literal(msg), true);
         b.displayClientMessage(Component.literal(msg), true);
-    }
-
-    private static void applyKnockback(ServerLevel world, ServerPlayer a, ServerPlayer b, Vec3 mid, double kb) {
-        if (kb <= 0) return;
-        AABB box = new AABB(mid, mid).inflate(6.0);
-        for (LivingEntity e : world.getEntitiesOfClass(LivingEntity.class, box,
-                x -> x != a && x != b && !x.isRemoved())) {
-            double ddx = e.getX() - mid.x, ddz = e.getZ() - mid.z;
-            double dist = Math.sqrt(ddx * ddx + ddz * ddz);
-            if (dist > 6.0 || dist < 0.01) continue;
-            double f = (1.0 - dist / 6.0) * kb;
-            e.setDeltaMovement(ddx / dist * f, 0.35 * f, ddz / dist * f);
-            e.hurtMarked = true;
-        }
     }
 
     // ------------------------------------------------------------------ tick / cleanup

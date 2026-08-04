@@ -1112,6 +1112,21 @@ public final class ChargedDapHandler {
     private static void executeTier1(ServerLevel w, Vec3 p, ServerPlayer p1, ServerPlayer p2) { executeTierLow(w, p, p1, p2, 1, "§e✋ Decent Dap!", 0.3); }
     private static void executeTier2(ServerLevel w, Vec3 p, ServerPlayer p1, ServerPlayer p2) { executeTierLow(w, p, p1, p2, 2, "§a✋ Good Dap! ✋", 0.6); }
 
+    /**
+     * Entry point for the synchronized ping-pong dap ({@link SyncDapHandler}). Reuses the
+     * classic tier effects so all particles, sounds and the perfect-dap impact shader fire.
+     * tier: 0 = basic (gray zone), 1 = medium (yellow), 2 = perfect (green cube).
+     */
+    public static void runSyncDap(ServerPlayer p1, ServerPlayer p2, int tier) {
+        ServerLevel world = p1.serverLevel();
+        Vec3 pos = p1.position().add(p2.position()).scale(0.5).add(0, 1.0, 0);
+        switch (tier) {
+            case 2 -> startPerfectDapTier3Animation(world, pos, p1, p2);
+            case 1 -> executeTier2(world, pos, p1, p2);
+            default -> executeTier1(world, pos, p1, p2);
+        }
+    }
+
     // ================================================================ tier 3 (great / perfect)
     private static void executeTier3Great(ServerLevel world, Vec3 pos, ServerPlayer p1, ServerPlayer p2,
                                           boolean perfectHit, boolean bothCharging) {

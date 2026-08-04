@@ -8,11 +8,10 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 /**
- * Client side of the synchronized ping-pong dap: shows the vertical bar with the
- * medium band + perfect cube and a marker that bounces up/down while the pair is
- * engaged. The local player releases G to lock the marker (handled in
- * {@link ChargedDapClientHandler}); this class only tracks the active window,
- * computes the current marker and draws the HUD.
+ * Client side of the synchronized ping-pong dap. Shows a minimalist vertical bar for
+ * the local player (with the medium band + perfect cube and a bouncing marker) and a
+ * smaller mirror bar for the partner to its right. Releasing G locks the local marker
+ * (handled in {@link ChargedDapClientHandler}).
  */
 @OnlyIn(Dist.CLIENT)
 public final class SyncDapClientHandler {
@@ -24,6 +23,7 @@ public final class SyncDapClientHandler {
 
     private static boolean active = false;
     private static long startTime = 0;
+    private static int partnerLocked = -1; // -1 = partner still choosing
 
     public static final IGuiOverlay HUD = (gui, g, partial, w, h) -> render(g, w, h);
 
@@ -31,14 +31,18 @@ public final class SyncDapClientHandler {
     public static void onActive(boolean isActive) {
         active = isActive;
         startTime = System.currentTimeMillis();
+        partnerLocked = -1;
     }
+
+    /** S2C from SyncDapHandler.SyncPartnerLockMsg. */
+    public static void onPartnerLock(int marker) { partnerLocked = marker; }
 
     public static boolean isActive() { return active; }
 
     /** Current marker value 0..100 (triangle / ping-pong wave). */
     public static int currentMarker() {
         long elapsed = System.currentTimeMillis() - startTime;
-        double t = (elapsed % PERIOD_MS) / (double) PERIOD_MS; // 0..1
+        double t = (elapsed % PERIOD_MS) / (double) PERIOD_MS;      // 0..1
         double tri = (t < 0.5) ? (t * 2.0) : (1.0 - (t - 0.5) * 2.0); // 0..1..0
         return (int) Math.round(tri * 100.0);
     }
@@ -52,51 +56,64 @@ public final class SyncDapClientHandler {
 
     public static void cancel() { active = false; }
 
+    // ---- colors (minimalist, semi-transparent) ----
+    private static final int BG      = 0x88101014;
+    private static final int MEDIUM  = 0x99E0A020; // amber band
+    private static final int PERFECT = 0xCC30D060; // green cube
+    private static final int MARK_P  = 0xFFFFFFFF;
+    private static final int MARK_M  = 0xFFFFE080;
+    private static final int MARK_B  = 0xFFFF6060;
+
     private static void render(GuiGraphics g, int screenW, int screenH) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
-        int barW = 12;
-        int barH = 110;
-        int barX = screenW / 2 + 50;
-        int barTop = screenH / 2 - barH / 2;
-        int barBottom = barTop + barH;
+        int cy = screenH / 2;
+        // main bar (local player)
+        int mainW = 8, mainH = 92;
+        int mainX = screenW / 2 + 34;
+        int mainTop = cy - mainH / 2;
+        drawBar(g, mainX, mainTop, mainW, mainH, currentMarker(), true);
 
-        // frame + background
-        g.fill(barX - 2, barTop - 2, barX + barW + 2, barBottom + 2, 0xCC000000);
-        g.fill(barX, barTop, barX + barW, barBottom, 0xFF202020);
+        // partner bar (smaller, to the right)
+        int pW = 5, pH = 66;
+        int pX = mainX + mainW + 7;
+        int pTop = cy - pH / 2;
+        int partnerMarker = (partnerLocked >= 0) ? partnerLocked : currentMarker();
+        drawBar(g, pX, pTop, pW, pH, partnerMarker, false);
 
-        // helper to map value 0..100 -> y (0 = bottom, 100 = top)
-        // medium band
-        int medTopY = valueToY(SyncDapHandler.MEDIUM_MAX, barTop, barH);
-        int medBotY = valueToY(SyncDapHandler.MEDIUM_MIN, barTop, barH);
-        g.fill(barX, medTopY, barX + barW, medBotY, 0xFFB8A000); // amber "good" band
-
-        // perfect cube
-        int perfTopY = valueToY(SyncDapHandler.PERFECT_MAX, barTop, barH);
-        int perfBotY = valueToY(SyncDapHandler.PERFECT_MIN, barTop, barH);
-        g.fill(barX - 2, perfTopY, barX + barW + 2, perfBotY, 0xFF00E000); // green perfect cube
-        g.fill(barX - 3, perfTopY - 1, barX + barW + 3, perfTopY, 0xFFFFFFFF);
-        g.fill(barX - 3, perfBotY, barX + barW + 3, perfBotY + 1, 0xFFFFFFFF);
-
-        // moving marker
-        int marker = currentMarker();
-        int my = valueToY(marker, barTop, barH);
-        int col = switch (SyncDapHandler.zoneOf(marker)) {
-            case 2 -> 0xFFFFFFFF;
-            case 1 -> 0xFFFFF080;
-            default -> 0xFFFF5050;
-        };
-        g.fill(barX - 4, my - 1, barX + barW + 4, my + 2, col);
-
-        // hint
-        String hint = "§7Release §eG§7 in the zone";
+        // small hint under the main bar
+        String hint = "§7release §fG§7 in the zone";
         int tw = mc.font.width(hint);
-        g.drawString(mc.font, hint, barX + barW / 2 - tw / 2, barBottom + 6, 0xFFFFFFFF, true);
+        g.drawString(mc.font, hint, mainX + mainW / 2 - tw / 2, mainTop + mainH + 5, 0xFFBFBFBF, true);
     }
 
-    private static int valueToY(int value, int barTop, int barH) {
-        return barTop + barH - (int) Math.round(value / 100.0 * barH);
+    /** Draws one bar (background, medium band, perfect cube, marker). */
+    private static void drawBar(GuiGraphics g, int x, int top, int w, int h, int marker, boolean main) {
+        int bottom = top + h;
+        // background
+        g.fill(x - 1, top - 1, x + w + 1, bottom + 1, BG);
+
+        int medTop = y(SyncDapHandler.MEDIUM_MAX, top, h);
+        int medBot = y(SyncDapHandler.MEDIUM_MIN, top, h);
+        g.fill(x, medTop, x + w, medBot, MEDIUM);
+
+        int perfTop = y(SyncDapHandler.PERFECT_MAX, top, h);
+        int perfBot = y(SyncDapHandler.PERFECT_MIN, top, h);
+        g.fill(x, perfTop, x + w, perfBot, PERFECT);
+
+        int my = y(marker, top, h);
+        int col = switch (SyncDapHandler.zoneOf(marker)) {
+            case 2 -> MARK_P;
+            case 1 -> MARK_M;
+            default -> MARK_B;
+        };
+        int over = main ? 3 : 2;
+        g.fill(x - over, my - 1, x + w + over, my + (main ? 2 : 1), col);
+    }
+
+    private static int y(int value, int top, int h) {
+        return top + h - (int) Math.round(value / 100.0 * h);
     }
 }
