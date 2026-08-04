@@ -33,6 +33,11 @@ public final class GroundPoundHandler {
     private static final double KB_STRENGTH = 2.2;
     private static final long LAND_STUN_MS = 500L;
     private static final int MIN_HEIGHT_BLOCKS = 3;
+    /** Minimum blocks the player must plunge for the slam to explode/break blocks.
+     *  Below this it is just a soft landing (no explosion, no block damage). */
+    private static final double MIN_EXPLOSION_HEIGHT = 10.0;
+    /** Plunging this far (blocks) turns the slam into a MEGA pound automatically. */
+    private static final double MEGA_EXPLOSION_HEIGHT = 15.0;
     private static final int ANIM_DIVE = 65;
     private static final int ANIM_LAND = 66;
     private static final long MAX_DIVE_MS = 15_000L;
@@ -130,7 +135,16 @@ public final class GroundPoundHandler {
         ServerLevel world = player.serverLevel();
         Vec3 pos = player.position();
         UUID id = player.getUUID();
-        boolean isMega = megaPound.remove(id);
+        // Mega pound triggers from the charged flag OR from a big plunge (>= 15 blocks).
+        boolean isMega = megaPound.remove(id) || heightFallen >= MEGA_EXPLOSION_HEIGHT;
+
+        // Require a real plunge (>= 10 blocks) before the slam explodes and breaks blocks.
+        // A short drop lands softly instead. Mega pound (charged) always slams.
+        if (!isMega && heightFallen < MIN_EXPLOSION_HEIGHT) {
+            lightLanding(player, world, pos, id);
+            return;
+        }
+
         double rawPower = Math.min(1.0, heightFallen / 10.0);
         double scaledPower = 1.0 - Math.exp(-rawPower * 2.5);
         if (heightFallen < MIN_HEIGHT_BLOCKS) scaledPower *= 0.3;
@@ -180,6 +194,17 @@ public final class GroundPoundHandler {
         player.setDeltaMovement(0, 0, 0);
         player.hurtMarked = true;
         player.displayClientMessage(Component.literal(scaledPower >= 0.6 ? "§c§l GROUND POUND!" : "§e Ground Pound"), true);
+    }
+
+    /** Soft touch-down for dives shorter than {@link #MIN_EXPLOSION_HEIGHT} blocks:
+     *  plays the land animation and a light puff, but no explosion / block breaking / AOE. */
+    private static void lightLanding(ServerPlayer player, ServerLevel world, Vec3 pos, UUID id) {
+        world.sendParticles(ParticleTypes.CLOUD, pos.x, pos.y + 0.1, pos.z, 8, 0.4, 0.05, 0.4, 0.02);
+        world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.5f, 1.1f);
+        PoseNetworking.broadcastAnimState(player, ANIM_LAND);
+        landStunEnd.put(id, System.currentTimeMillis() + LAND_STUN_MS);
+        player.setDeltaMovement(0, 0, 0);
+        player.hurtMarked = true;
     }
 
     private static boolean isCloseToGroundFalling(ServerPlayer player) {

@@ -901,6 +901,13 @@ public class CoopAnimationHandler {
         }
 
         AnimState state = AnimState.values()[stateOrdinal];
+
+        // Skip redundant re-application of the SAME state. Without this, a state that is
+        // (re)broadcast while already active restarts the animation from frame 0 every
+        // time, making the limb visibly jitter (mirrors updatePlayerAnimation's
+        // currentPose guard, which is why grab is smooth).
+        if (animStates.get(playerId) == state) return;
+
         try {
             if (!hasLayer(clientPlayer)) return;
             switch (state) {
