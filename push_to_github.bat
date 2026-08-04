@@ -37,6 +37,9 @@ echo [*] Committing...
 git add .
 git commit -m "Coop Moves Forge port - update" || echo (nothing to commit)
 
+echo [*] Syncing with remote (pull first)...
+git pull origin main --allow-unrelated-histories --no-edit -X ours
+
 echo [*] Pushing to %REPO_URL% ...
 git push -u origin main
 
