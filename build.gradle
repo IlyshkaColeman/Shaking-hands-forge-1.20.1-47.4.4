@@ -98,17 +98,53 @@ tasks.named('processResources', ProcessResources).configure {
 
     // KosmX PlayerAnimator auto-loads animations ONLY from assets/<ns>/player_animation
     // (singular). The animation JSONs shipped by the original Fabric mod live in
-    // player_animations (plural, ZigyTheBird PAL convention). Rename the folder at
-    // build time so every animation is registered under testcoop:<file-name>.
+    // player_animations (plural, ZigyTheBird PAL convention) and some use a static-pose
+    // shorthand ("rotation": {"vector": [...]}) that KosmX's stricter GeckoLib parser
+    // rejects (crashing the whole load). The fixAnimations task normalises them into
+    // keyframe form and writes them under the correct singular folder name; we copy from
+    // there and drop the original plural folder.
+    dependsOn 'fixAnimations'
     exclude 'assets/testcoop/player_animations/**'
-    from('src/main/resources/assets/testcoop/player_animations') {
-        // A stray duplicate 'dap _hold.json' (note the space) would produce an invalid
-        // ResourceLocation and break KosmX's whole folder scan; the valid 'dap_hold.json'
-        // is kept. Exclude any file whose name contains a space to be safe.
-        exclude '**/* *'
-        into 'assets/testcoop/player_animation'
-    }
+    from("${buildDir}/fixedAnimations")
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Normalise KosmX player animations: rename folder to the singular name KosmX expects and
+// wrap any static "{\"vector\": [...]}" channel into a single "0.0" keyframe so KosmX's
+// GeckoLib deserialiser accepts every file (one bad file otherwise crashes the client).
+tasks.register('fixAnimations') {
+    def srcDir = file('src/main/resources/assets/testcoop/player_animations')
+    def outDir = file("${buildDir}/fixedAnimations/assets/testcoop/player_animation")
+    inputs.dir srcDir
+    outputs.dir outDir
+    doLast {
+        outDir.mkdirs()
+        outDir.eachFile { it.delete() }
+        def slurper = new groovy.json.JsonSlurper()
+        srcDir.listFiles().findAll { it.isFile() && it.name.endsWith('.json') }.each { f ->
+            if (f.name.contains(' ')) { return } // invalid ResourceLocation, skip the stray dup
+            def data = slurper.parse(f)
+            def anims = data instanceof Map ? data['animations'] : null
+            if (anims instanceof Map) {
+                anims.values().each { anim ->
+                    def bones = anim instanceof Map ? anim['bones'] : null
+                    if (bones instanceof Map) {
+                        bones.values().each { bone ->
+                            if (bone instanceof Map) {
+                                ['rotation', 'position', 'scale'].each { ch ->
+                                    def channel = bone[ch]
+                                    if (channel instanceof Map && channel.containsKey('vector')) {
+                                        bone[ch] = ['0.0': channel]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            new File(outDir, f.name).text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+    }
 }
 
 tasks.named('jar', Jar).configure {
