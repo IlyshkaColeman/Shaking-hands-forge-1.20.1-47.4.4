@@ -48,6 +48,7 @@ public final class CoopAnim {
                 1000,
                 (player) -> new ModifierLayer<IAnimation>()
         );
+        System.out.println("[CoopAnim] layer factory registered: " + LAYER_ID);
     }
 
     /** Returns the player's modifier layer, or null if not present yet. */
@@ -106,14 +107,28 @@ public final class CoopAnim {
      * first person with a per-pose arm/item configuration; other poses keep vanilla
      * first-person arms.
      */
+    private static boolean loggedFirstPlay = false;
+
     public static void play(AbstractClientPlayer player, ResourceLocation animId) {
         ModifierLayer<IAnimation> layer = getLayer(player);
-        if (layer == null) return;
+        if (layer == null) {
+            System.out.println("[CoopAnim] NO LAYER for " + player.getGameProfile().getName()
+                    + " (KosmX layer factory not attached / lib issue) when playing " + animId);
+            return;
+        }
         var anim = PlayerAnimationRegistry.getAnimation(animId);
-        if (anim == null) return;
+        if (anim == null) {
+            System.out.println("[CoopAnim] ANIMATION NOT FOUND in KosmX registry: " + animId
+                    + " (check assets/testcoop/player_animations/" + animId.getPath() + ".json)");
+            return;
+        }
         String path = animId.getPath();
         FirstPersonMode mode = isFp(path) ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
         layer.setAnimation(new FpAnimationPlayer(anim, mode, fpConfig(path)));
+        if (!loggedFirstPlay) {
+            loggedFirstPlay = true;
+            System.out.println("[CoopAnim] first animation applied OK: " + animId + " (mode=" + mode + ")");
+        }
     }
 
     /** Stops any animation currently playing on the player's layer. */
