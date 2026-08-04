@@ -126,7 +126,9 @@ public final class GrabInputHandler {
             } else if (pose == PoseState.GRAB_READY) {
                 PoseNetworking.poseStates.put(playerId, PoseState.NONE);
                 PoseNetworking.sendPoseToServer(playerId, PoseState.NONE);
-            } else if (pose == PoseState.NONE && handsEmpty(player)) {
+            } else if (!isBeingHeld && handsEmpty(player)) {
+                // Raise ready from ANY other non-holding state (not just NONE) so a stale/
+                // stuck pose can't make R unresponsive after using another mechanic.
                 PoseNetworking.poseStates.put(playerId, PoseState.GRAB_READY);
                 PoseNetworking.sendPoseToServer(playerId, PoseState.GRAB_READY);
             }

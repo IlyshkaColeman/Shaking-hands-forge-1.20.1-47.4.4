@@ -1121,7 +1121,16 @@ public final class ChargedDapHandler {
         ServerLevel world = p1.serverLevel();
         Vec3 pos = p1.position().add(p2.position()).scale(0.5).add(0, 1.0, 0);
         switch (tier) {
-            case 2 -> startPerfectDapTier3Animation(world, pos, p1, p2);
+            case 2 -> {
+                // Register perfect-dap tracking so the freeze-clear tick (which iterates
+                // perfectDapStartTime) actually unfreezes the pair at 812ms and cleans up
+                // at 1625ms. Without this the players stay frozen forever (G/R/movement lock).
+                long now = System.currentTimeMillis();
+                UUID id1 = p1.getUUID(), id2 = p2.getUUID();
+                perfectDapStartTime.put(id1, now); perfectDapStartTime.put(id2, now);
+                perfectDapPartner.put(id1, id2); perfectDapPartner.put(id2, id1);
+                startPerfectDapTier3Animation(world, pos, p1, p2);
+            }
             case 1 -> executeTier2(world, pos, p1, p2);
             default -> executeTier1(world, pos, p1, p2);
         }
