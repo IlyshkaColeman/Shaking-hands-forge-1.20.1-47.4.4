@@ -123,14 +123,20 @@ public final class HighFiveClientHandler {
     public static void onHighFiveAnim(UUID playerId, int animState) {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null) return;
+        // Apply the animation LOCALLY (setAnimStateFromNetwork does not re-broadcast).
+        // The old play* helpers re-sent the state over the network, so every receiving
+        // client echoed it back and the animation restarted repeatedly -> jitter.
+        int ordinal = switch (animState) {
+            case HighFiveHandler.ANIM_START -> CoopAnimationHandler.AnimState.HIGHFIVE_START.ordinal();
+            case HighFiveHandler.ANIM_END   -> CoopAnimationHandler.AnimState.HIGHFIVE_END.ordinal();
+            case HighFiveHandler.ANIM_HIT   -> CoopAnimationHandler.AnimState.HIGHFIVE_HIT.ordinal();
+            case HighFiveHandler.ANIM_SIKE  -> CoopAnimationHandler.AnimState.HIGHFIVE_SIKE.ordinal();
+            default -> -1;
+        };
+        if (ordinal < 0) return;
         for (AbstractClientPlayer p : client.level.players()) {
             if (p.getUUID().equals(playerId)) {
-                switch (animState) {
-                    case HighFiveHandler.ANIM_START -> CoopAnimationHandler.playHighFiveStart(p);
-                    case HighFiveHandler.ANIM_END   -> CoopAnimationHandler.playHighFiveEnd(p);
-                    case HighFiveHandler.ANIM_HIT   -> CoopAnimationHandler.playHighFiveHit(p);
-                    case HighFiveHandler.ANIM_SIKE  -> CoopAnimationHandler.playHighFiveSike(p);
-                }
+                CoopAnimationHandler.setAnimStateFromNetwork(p, ordinal);
                 break;
             }
         }

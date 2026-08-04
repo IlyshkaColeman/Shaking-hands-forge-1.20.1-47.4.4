@@ -388,10 +388,11 @@ public final class HighFiveHandler {
 
         highFiveAnimStart.put(player1.getUUID(), now);
         highFiveAnimStart.put(player2.getUUID(), now);
+        // Deliver the hit animation on a SINGLE channel (HighFiveAnimMsg). Sending it on
+        // both channels (also broadcastAnimState 20) made every client apply the animation
+        // twice, restarting it and causing the visible jitter.
         broadcastHighFiveAnim(player1, ANIM_HIT);
         broadcastHighFiveAnim(player2, ANIM_HIT);
-        PoseNetworking.broadcastAnimState(player1, 20);
-        PoseNetworking.broadcastAnimState(player2, 20);
 
         // After a high-five: open the G QTE-hug (~250ms); if it isn't entered, fall
         // back to the hold-to-hug (F) window at 2s. Mirrors the Fabric flow.
@@ -500,7 +501,8 @@ public final class HighFiveHandler {
         startAnimTime.remove(sikerId); startAnimTime.remove(victimId);
         syncHandRaised(siker, false); syncHandRaised(victim, false);
         PoseNetworking.broadcastAnimState(siker, 0);
-        broadcastHighFiveAnim(victim, ANIM_SIKE);
+        // Single channel only (broadcastAnimState below); sending ANIM_SIKE too would
+        // apply the sike pose twice and make it jitter.
         PoseNetworking.broadcastAnimState(victim, ANIM_SIKE_POSE);
         sikeStunEnd.put(victimId, now + SIKE_ANIM_MS);
         frozenPositions.put(victimId, victim.position());

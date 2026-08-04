@@ -1746,6 +1746,9 @@ public final class ChargedDapHandler {
         NormalFacingDapHandler.clearConfirm(player.getUUID(), null);
         ChargeSyncMsg msg = new ChargeSyncMsg(player.getUUID(), 0f, 0f, false);
         for (ServerPlayer other : player.getServer().getPlayerList().getPlayers()) CoopNetwork.sendToPlayer(other, msg);
+        // Also clear the dap-charge arm animation on all clients (the client starts it
+        // locally on G-press, so a server-side cancel must reset it or the pose lingers).
+        PoseNetworking.broadcastAnimState(player, ANIM_NONE);
     }
 
     public static void broadcastWhiffCooldown(ServerPlayer player, long cooldownEnd) {

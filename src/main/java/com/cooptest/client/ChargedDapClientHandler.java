@@ -151,11 +151,16 @@ public final class ChargedDapClientHandler {
                 localCharging = true;
                 localChargeStartTime = System.currentTimeMillis();
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeStartMsg());
+                // Play the dap-charge arm animation immediately (also syncs it to others).
+                CoopAnimationHandler.startDapCharge(player);
             }
         } else if (!dapDown && wasDapKeyDown) {
             if (localCharging) {
                 localCharging = false;
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeReleaseMsg());
+                // Stop the local charge pose; the server broadcasts the result animation
+                // (dap hit / whiff-none) which then takes over.
+                CoopAnimationHandler.stopDapChargeLocalOnly(player);
             }
         }
         if (localCharging && onCooldown) localCharging = false;
