@@ -8,7 +8,7 @@ REM  On later changes just double-click again — it commits & pushes.
 REM ============================================================
 
 REM ==== EDIT THIS LINE: your repo URL ====
-set REPO_URL=https://github.com/IlyshkaColeman/Shaking-hands-forge-1.20.1-47.4.4/actions
+set REPO_URL=https://github.com/IlyshkaColeman/Shaking-hands-forge-1.20.1-47.4.4
 REM =======================================
 
 cd /d "%~dp0"
