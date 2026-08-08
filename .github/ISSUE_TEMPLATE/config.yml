@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Скачать последний релиз
+    url: https://github.com/IlyshkaColeman/Shaking-hands-forge-1.20.1-47.4.4/releases/latest
+    about: Здесь находится последняя опубликованная сборка мода.
+  - name: Безопасность
+    url: https://github.com/IlyshkaColeman/Shaking-hands-forge-1.20.1-47.4.4/blob/main/SECURITY.md
+    about: Как сообщать о проблемах безопасности.
+

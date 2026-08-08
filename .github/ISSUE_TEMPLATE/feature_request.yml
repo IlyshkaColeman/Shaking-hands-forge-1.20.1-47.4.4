@@ -1,0 +1,34 @@
+name: Идея или улучшение
+description: Предложить новую механику, комбо, эффект, звук или улучшение HUD
+title: "[Идея]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Расскажите, что хочется добавить или изменить. Можно описывать даже без технических деталей.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Идея
+      placeholder: Например, новое комбо для двух игроков, другой звук заряда, эффект камеры, новая анимация...
+    validations:
+      required: true
+
+  - type: textarea
+    id: gameplay
+    attributes:
+      label: Как это должно работать в игре?
+      placeholder: Какие кнопки, условия, эффекты и результат?
+    validations:
+      required: false
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Почему это будет круто?
+      placeholder: Как это улучшит игру с друзьями?
+    validations:
+      required: false
+

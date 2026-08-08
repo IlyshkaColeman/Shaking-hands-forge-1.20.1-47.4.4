@@ -1,0 +1,74 @@
+name: Баг
+description: Сообщить о проблеме в Shaking Hands
+title: "[Баг]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за багрепорт. Чем подробнее описание, тем быстрее получится найти причину.
+
+  - type: input
+    id: mod_version
+    attributes:
+      label: Версия мода
+      description: Например, Shaking-hands-forge-1.20.1-47.4.4.jar
+      placeholder: Shaking-hands-forge-1.20.1-47.4.4.jar
+    validations:
+      required: true
+
+  - type: input
+    id: forge_version
+    attributes:
+      label: Версия Forge
+      placeholder: 1.20.1 - 47.4.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Где произошёл баг?
+      options:
+        - Одиночная игра
+        - LAN
+        - Сервер
+        - Не уверен
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить баг?
+      description: Опишите действия по шагам.
+      placeholder: |
+        1. Нажал G
+        2. Друг подошёл рядом
+        3. Удерживал кнопку до заряда
+        4. Анимация пропала / текст задёргался / эффект не сработал
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что должно было произойти?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Что произошло на самом деле?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи, скриншоты или видео
+      description: Если есть crash-report, latest.log, скриншот или видео — приложите сюда.
+    validations:
+      required: false
+
