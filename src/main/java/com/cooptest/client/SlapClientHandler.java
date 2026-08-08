@@ -19,6 +19,8 @@ public final class SlapClientHandler {
 
     private static long slapCooldownEnd = 0;
 
+    public static void register() { }
+
     public static boolean isOnSlapCooldown() { return System.currentTimeMillis() < slapCooldownEnd; }
     public static void triggerSlapCooldown() { slapCooldownEnd = System.currentTimeMillis() + 500L; }
 

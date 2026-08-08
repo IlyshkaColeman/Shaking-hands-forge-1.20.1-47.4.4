@@ -400,19 +400,16 @@ public final class HighFiveHandler {
         // After a high-five: open the G QTE-hug (~250ms); if it isn't entered, fall
         // back to the hold-to-hug (F) window at 2s. Mirrors the Fabric flow.
         final ServerPlayer fp1 = player1, fp2 = player2;
-        new Thread(() -> {
-            try { Thread.sleep(250); } catch (InterruptedException ignored) {}
-            fp1.getServer().execute(() -> HighFiveQTEHugHandler.startHugQTE(fp1, fp2));
-        }).start();
+        ServerTaskScheduler.scheduleMillis(fp1.getServer(), 250, () -> {
+            if (fp1.isAlive() && fp2.isAlive()) HighFiveQTEHugHandler.startHugQTE(fp1, fp2);
+        });
         if (CoopMovesConfig.get().enableHighFiveHug) {
-            new Thread(() -> {
-                try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
-                fp1.getServer().execute(() -> {
-                    if (!HighFiveQTEHugHandler.isInHugSession(fp1.getUUID())
-                            && !HighFiveQTEHugHandler.isInHugSession(fp2.getUUID()))
-                        HighFiveHugHandler.startHugHold(fp1, fp2);
-                });
-            }).start();
+            ServerTaskScheduler.scheduleMillis(fp1.getServer(), 2000, () -> {
+                if (fp1.isAlive() && fp2.isAlive()
+                        && !HighFiveQTEHugHandler.isInHugSession(fp1.getUUID())
+                        && !HighFiveQTEHugHandler.isInHugSession(fp2.getUUID()))
+                    HighFiveHugHandler.startHugHold(fp1, fp2);
+            });
         }
 
         double speed1 = getMaxRecentSpeed(player1.getUUID());
@@ -480,8 +477,8 @@ public final class HighFiveHandler {
         PoseNetworking.broadcastAnimState(p1, ANIM_HIT_COMBO);
         PoseNetworking.broadcastAnimState(p2, ANIM_HIT_COMBO);
         pendingComboImpacts.put(id1, new ComboImpact(p1, p2, now + COMBO_SECOND_HIT_MS));
-        p1.displayClientMessage(Component.literal("§6§l✨ COMBO! ✨"), true);
-        p2.displayClientMessage(Component.literal("§6§l✨ COMBO! ✨"), true);
+        MechanicHudText.send(p1, "COMBO HIGH FIVE", "double impact armed", MechanicHudText.EPIC, 1650L);
+        MechanicHudText.send(p2, "COMBO HIGH FIVE", "double impact armed", MechanicHudText.EPIC, 1650L);
     }
 
     private static void executeSecondImpact(ServerPlayer p1, ServerPlayer p2) {
@@ -491,8 +488,8 @@ public final class HighFiveHandler {
         world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.5f, 1.0f);
         world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, pos.x, pos.y, pos.z, 30, 0.3, 0.3, 0.3, 0.1);
         world.sendParticles(ParticleTypes.CRIT, pos.x, pos.y, pos.z, 20, 0.3, 0.3, 0.3, 0.15);
-        p1.displayClientMessage(Component.literal("§e⚡ PERFECT! ⚡"), true);
-        p2.displayClientMessage(Component.literal("§e⚡ PERFECT! ⚡"), true);
+        MechanicHudText.success(p1, "PERFECT!", "timing snapped");
+        MechanicHudText.success(p2, "PERFECT!", "timing snapped");
     }
 
     // ------------------------------------------------------------------ sike
@@ -515,8 +512,8 @@ public final class HighFiveHandler {
         world.playSound(null, vp.x, vp.y, vp.z, SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 0.8f);
         world.sendParticles(ParticleTypes.ANGRY_VILLAGER, vp.x, vp.y + 0.6, vp.z, 4, 0.3, 0.2, 0.3, 0.05);
         world.sendParticles(ParticleTypes.POOF, vp.x, vp.y + 0.3, vp.z, 8, 0.2, 0.1, 0.2, 0.03);
-        siker.displayClientMessage(Component.literal("§6§l😂 SIKE!"), true);
-        victim.displayClientMessage(Component.literal("§c§lSIKE!"), true);
+        MechanicHudText.warning(siker, "SIKE!", "bait successful");
+        MechanicHudText.danger(victim, "SIKED!", "you got baited");
         highFiveCooldown.put(sikerId, now);
     }
 
@@ -540,8 +537,8 @@ public final class HighFiveHandler {
         world.sendParticles(ParticleTypes.CRIT, mid.x, mid.y, mid.z, 24, 0.4, 0.4, 0.4, 0.2);
         world.sendParticles(ParticleTypes.ANGRY_VILLAGER, mid.x, mid.y + 0.5, mid.z, 8, 0.3, 0.2, 0.3, 0.05);
         world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 0.8f);
-        p1.displayClientMessage(Component.literal("§c§l💥 MUTUAL SIKE! You both played dirty!"), true);
-        p2.displayClientMessage(Component.literal("§c§l💥 MUTUAL SIKE! You both played dirty!"), true);
+        MechanicHudText.danger(p1, "MUTUAL SIKE", "both played dirty");
+        MechanicHudText.danger(p2, "MUTUAL SIKE", "both played dirty");
     }
 
     private static double getMaxRecentSpeed(UUID playerId) {
@@ -563,7 +560,7 @@ public final class HighFiveHandler {
         level.playSound(null, pos.x, pos.y, pos.z,
                 SoundEvents.SAND_BREAK, SoundSource.PLAYERS, 0.4f, 1.2f);
         level.sendParticles(ParticleTypes.POOF, pos.x, pos.y, pos.z, 6, 0.15, 0.15, 0.15, 0.01);
-        player.displayClientMessage(Component.literal("§7*left hanging*"), true);
+        MechanicHudText.info(player, "LEFT HANGING", "no homie answered");
     }
 
     // ------------------------------------------------------------------ tier effects
@@ -639,8 +636,8 @@ public final class HighFiveHandler {
         createBattleShockwave(world, pos, p1, p2, 10.0);
         // STAGE 4: ChargedDapHandler.applyImpactFreeze(p1, p2, 3) restores with Dap family.
         applyKnockback(p1, p2, pos, 0.3);
-        p1.displayClientMessage(Component.literal("§6§l⚡ SHOCKWAVE! ⚡"), true);
-        p2.displayClientMessage(Component.literal("§6§l⚡ SHOCKWAVE! ⚡"), true);
+        MechanicHudText.send(p1, "SHOCKWAVE!", "high five detonated", MechanicHudText.EPIC, 1700L);
+        MechanicHudText.send(p2, "SHOCKWAVE!", "high five detonated", MechanicHudText.EPIC, 1700L);
     }
 
     private static void createBattleShockwave(ServerLevel world, Vec3 pos, ServerPlayer p1, ServerPlayer p2, double radius) {

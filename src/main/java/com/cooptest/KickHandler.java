@@ -320,7 +320,9 @@ public final class KickHandler {
             NetworkEvent.Context c = ctx.get();
             c.enqueueWork(() -> {
                 ServerPlayer player = c.getSender();
-                if (player != null) onKickStart(player, m.dropKickMode());
+                if (player != null && CoopMovesConfig.get().enableKick
+                        && (!m.dropKickMode() || CoopMovesConfig.get().enableDropKick))
+                    onKickStart(player, m.dropKickMode());
             });
             c.setPacketHandled(true);
         }

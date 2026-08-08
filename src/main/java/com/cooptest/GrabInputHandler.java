@@ -86,6 +86,8 @@ public final class GrabInputHandler {
         LocalPlayer player = client.player;
         if (player == null) return;
         if (grabKey == null) return; // key mappings not registered yet
+        CoopMovesConfig cfg = CoopMovesConfig.get();
+        if (!cfg.enableGrab) return;
 
         UUID playerId = player.getUUID();
         PoseState pose = PoseNetworking.poseStates.getOrDefault(playerId, PoseState.NONE);
@@ -121,7 +123,7 @@ public final class GrabInputHandler {
         // --- Grab key (R): toggle ready / drop held ---
         boolean isGrabKeyPressed = grabKey.isDown();
         if (isGrabKeyPressed && !wasGrabKeyPressed) {
-            if (isHolding) {
+            if (isHolding && cfg.enableShieldMode) {
                 GrabNetworking.sendDropRequest();
             } else if (pose == PoseState.GRAB_READY) {
                 PoseNetworking.poseStates.put(playerId, PoseState.NONE);
@@ -168,7 +170,7 @@ public final class GrabInputHandler {
         boolean spinning = com.cooptest.client.SpinClientHandler.isLocalPlayerSpinning();
         boolean helicopterMode = isThrownAirborne && spinning && player.getFirstPassenger() != null;
 
-        if (helicopterMode && !diving) {
+        if (cfg.enableSpin && cfg.enableGroundPound && helicopterMode && !diving) {
             // Spinning with a rider: release sneak -> stop + MEGA ground pound.
             if (sneakJustReleased) {
                 spinWasActive = false;
@@ -176,7 +178,7 @@ public final class GrabInputHandler {
                 com.cooptest.client.SpinClientHandler.forceStopLocalSpin();
                 com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
             }
-        } else if (isThrownAirborne && !diving) {
+        } else if (cfg.enableSpin && isThrownAirborne && !diving) {
             if (sneakJustReleased && spinning) {
                 spinWasActive = true;
                 spinStopTime = System.currentTimeMillis();
@@ -188,15 +190,20 @@ public final class GrabInputHandler {
                     spinWasActive = false;
                     com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStopMsg());
                     com.cooptest.client.SpinClientHandler.forceStopLocalSpin();
-                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+                    if (cfg.enableGroundPound)
+                        com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
                 } else if (spinWasActive && System.currentTimeMillis() - spinStopTime < 300L) {
                     spinWasActive = false;
-                    com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
+                    if (cfg.enableGroundPound)
+                        com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
                 } else {
                     spinWasActive = false;
                     com.cooptest.CoopNetwork.sendToServer(new com.cooptest.SpinHandler.SpinStartMsg());
                 }
             }
+        } else if (!cfg.enableSpin && cfg.enableGroundPound && isThrownAirborne && !diving) {
+            if (sneakJustPressed)
+                com.cooptest.CoopNetwork.sendToServer(new com.cooptest.GroundPoundHandler.GroundPoundStartMsg());
         } else {
             if (sneakJustPressed && isBeingHeld) {
                 GrabNetworking.sendEscapeRequest();
@@ -212,7 +219,7 @@ public final class GrabInputHandler {
         boolean isThrowKeyPressed = throwKey.isDown();
         boolean justThrowPressed = isThrowKeyPressed && !wasThrowKeyPressed;
         boolean justThrowReleased = !isThrowKeyPressed && wasThrowKeyPressed;
-        if (isHolding) {
+        if (isHolding && cfg.enableThrow && cfg.enableYeet && cfg.enableGrabThrow) {
             com.cooptest.client.KickClientHandler.cancelIfCharging();
             if (justThrowPressed) {
                 isChargingThrow = true;
@@ -247,7 +254,7 @@ public final class GrabInputHandler {
             }
             // Kick / drop-kick when free-handed (T). Slap shares this key but is
             // triggered server-side via an attack mixin (Stage 5).
-            boolean canKick = !player.isPassenger() && pose == PoseState.NONE;
+            boolean canKick = cfg.enableKick && !player.isPassenger() && pose == PoseState.NONE;
             if (canKick) {
                 com.cooptest.client.KickClientHandler.handleKickTick(
                         client, isThrowKeyPressed, player.isSprinting());

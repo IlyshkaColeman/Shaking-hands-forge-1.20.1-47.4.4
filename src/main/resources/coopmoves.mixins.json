@@ -6,6 +6,7 @@
   "refmap": "coopmoves.refmap.json",
   "mixins": [],
   "client": [
+    "GuiOverlayMessageMixin",
     "LivingEntityRendererMixin"
   ],
   "server": [],

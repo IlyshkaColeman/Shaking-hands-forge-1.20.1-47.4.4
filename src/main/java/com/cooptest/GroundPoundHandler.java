@@ -47,7 +47,8 @@ public final class GroundPoundHandler {
         public static GroundPoundStartMsg decode(FriendlyByteBuf buf) { return new GroundPoundStartMsg(); }
         public static void handle(GroundPoundStartMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null) onStart(p); });
+            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null
+                    && CoopMovesConfig.get().enableGroundPound) onStart(p); });
             c.setPacketHandled(true);
         }
     }

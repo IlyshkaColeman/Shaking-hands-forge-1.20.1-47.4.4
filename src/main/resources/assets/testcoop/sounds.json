@@ -58,7 +58,7 @@
   },
   "dap.hit": {
     "sounds": [
-      "testcoop:dap_hit"
+      "testcoop:dap2"
     ],
     "subtitle": "Dap hit"
   },
@@ -76,5 +76,29 @@
   "clap6": { "sounds": [{ "name": "testcoop:clap6", "stream": false }] },
   "heli": { "sounds": [{ "name": "testcoop:heli", "stream": false }], "subtitle": "Helicopter spin" },
   "cooldap": { "sounds": [{ "name": "testcoop:cooldap", "stream": false }] },
-  "slap": { "sounds": [{ "name": "testcoop:slap", "stream": false }] }
+  "slap": { "sounds": [{ "name": "testcoop:slap", "stream": false }] },
+  "fire_charge_ignite": {
+    "sounds": [{ "name": "testcoop:fire_charge_ignite", "stream": false }],
+    "subtitle": "Volcanic dap ignites"
+  },
+  "fire_charge_rumble": {
+    "sounds": [{ "name": "testcoop:fire_charge_rumble", "stream": false }],
+    "subtitle": "Volcanic dap rumbles"
+  },
+  "fire_charge_lava": {
+    "sounds": [{ "name": "testcoop:fire_charge_lava", "stream": false }],
+    "subtitle": "Volcanic dap burns"
+  },
+  "fire_charge_volcano": {
+    "sounds": [{ "name": "testcoop:fire_charge_volcano", "stream": false }],
+    "subtitle": "Volcanic dap erupts"
+  },
+  "fire_charge_whoosh": {
+    "sounds": [{ "name": "testcoop:fire_charge_whoosh", "stream": false }],
+    "subtitle": "Volcanic dap rises"
+  },
+  "fire_charge_riser_boom": {
+    "sounds": [{ "name": "testcoop:fire_charge_riser_boom", "stream": false }],
+    "subtitle": "Volcanic dap peaks"
+  }
 }

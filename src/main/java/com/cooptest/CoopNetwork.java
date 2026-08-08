@@ -71,6 +71,7 @@ public final class CoopNetwork {
      */
     public static void registerAll() {
         // Order mirrors the Fabric TestCoop.onInitialize() registration order.
+        MechanicHudText.registerMessages();
         PoseNetworking.register();
         GrabNetworking.register();
         GrabMechanic.ShieldModeMsg.register();

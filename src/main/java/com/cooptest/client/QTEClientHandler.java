@@ -1,8 +1,12 @@
 package com.cooptest.client;
 
 import com.cooptest.QTEManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 import java.util.UUID;
 
@@ -30,6 +34,9 @@ public final class QTEClientHandler {
     private static long windowEnd = 0;
     private static long receiveTime = 0;
     private static boolean pressedThisWindow = false;
+
+    public static final IGuiOverlay HUD = (gui, graphics, partialTick, width, height) ->
+            renderHud(graphics, width, height);
 
     public static void register() { }
 
@@ -76,4 +83,42 @@ public final class QTEClientHandler {
     public static void setMaxStages(int max) { maxStages = max; }
     public static long getReceiveTime() { return receiveTime; }
     public static boolean isPressedThisWindow() { return pressedThisWindow; }
+
+    private static void renderHud(GuiGraphics graphics, int screenWidth, int screenHeight) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!active || mc.player == null || mc.options.hideGui || expectedButton == null) return;
+
+        long now = System.currentTimeMillis();
+        int barWidth = 90;
+        int barHeight = 5;
+        int x = (screenWidth - barWidth) / 2;
+        int y = screenHeight / 2 + 28;
+        graphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xCC000000);
+        graphics.fill(x, y, x + barWidth, y + barHeight, 0xFF333333);
+
+        int color;
+        int fill;
+        if (now < windowStart) {
+            fill = barWidth;
+            color = 0xFFFFAA00;
+        } else if (now <= windowEnd) {
+            float remaining = 1.0f - (float) (now - windowStart) / Math.max(1L, windowEnd - windowStart);
+            fill = Math.max(0, Math.min(barWidth, (int) (barWidth * remaining)));
+            color = pressedThisWindow ? 0xFF44FF44 : 0xFF22CC22;
+        } else {
+            fill = 0;
+            color = 0xFFCC2222;
+        }
+        if (fill > 0) graphics.fill(x, y, x + fill, y + barHeight, color);
+
+        String prompt = "[" + expectedButton + "]";
+        HudTextRenderer.drawCenterImpact(graphics, prompt, screenWidth / 2, y - 11,
+                pressedThisWindow ? 0xFF66FF66 : 0xFFFFFFFF,
+                pressedThisWindow ? 0xFF2DFF82 : 0xFF5CEBFF);
+        if (maxStages > 1) {
+            String progress = stage + "/" + maxStages;
+            HudTextRenderer.drawCenterCompact(graphics, progress, screenWidth / 2, y + 12,
+                    0xFFDDDDDD, 0xFF777777);
+        }
+    }
 }

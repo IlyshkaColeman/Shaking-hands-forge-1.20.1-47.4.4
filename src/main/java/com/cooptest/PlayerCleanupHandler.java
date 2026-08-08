@@ -54,7 +54,7 @@ public final class PlayerCleanupHandler {
         HuddleHandler.cleanup(uuid);
         PushInteractionHandler.pushImmunity.remove(uuid);
         ChargedDapHandler.cleanup(uuid);
-        SyncDapHandler.cleanup(uuid);
+        SyncDapHandler.cleanup(uuid, server);
         QTEManager.cancelQTE(uuid);
         DapComboChain.cancelCombo(uuid);
         PerfectDapComboHandler.cancelCombo(uuid);
@@ -69,8 +69,10 @@ public final class PlayerCleanupHandler {
         KickHandler.cleanup(uuid);
         ClapHandler.cleanup(uuid);
         NormalFacingDapHandler.cleanup(uuid);
+        DapHoldHandler.cleanup(uuid, server);
         SitHandler.cleanup(uuid);
         GroundPoundHandler.cleanup(uuid);
+        SpinHandler.cleanup(uuid);
         LaunchedPlayerTracker.cleanup(uuid);
 
         // Reset pose/anim so the client's input logic (e.g. Grab R) works after respawn.

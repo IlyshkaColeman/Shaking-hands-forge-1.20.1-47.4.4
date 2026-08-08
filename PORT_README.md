@@ -155,38 +155,21 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 - [x] Заглушки `HighFiveQTEHugHandler`/`HuddleHandler`/`HighFiveHugHandler` +
       централизованная QTE-цепочка в `QTEManager` (PerfectDapCombo → Fusion →
       QTEHug → Huddle → DapCombo → QTEManager). Оживило QTE у dap-combo/fusion.
-- [ ] **`ChargedDapHandler` ядро** — ПОСЛЕДНЕЕ: заряд G → тиры → комбо → fire →
-      heaven (~2400 строк). Читаю по кускам (дошёл до ~строки 722), замена shell.
-      Диспетчер QTE уже вынесен в QTEManager, поэтому в ядре его не будет.
-- [ ] Остаток HighFive: Hug / QTEHug / Huddle.
+- [x] **`ChargedDapHandler` ядро** — заряд и тиры, combo/fire/heaven, QTE и
+      синхронный дап. Обычный `G` использует синхронную механику, `Shift+G`
+      принудительно запускает классическую ветку тиров.
+- [x] HighFive: Hug / QTEHug / Huddle, клиентские окна и HUD.
 
-## СЛЕДУЮЩИЙ ШАГ (для продолжения работы)
+## Текущее состояние порта
 
-Порядок, в котором продолжать Этап 4 — брать класс из оригинального репо
-`Anteryo/Dap-ur-homie` (ветка main) и портировать по уже отработанному шаблону:
+Основные серверные и клиентские механики перенесены на Forge 1.20.1: Grab/Throw,
+HighFive/Hug/Huddle, всё Dap-семейство и QTE-комбо, Fusion, Fall Dap, Push,
+Catch, Mario Jump, Kick/Slap/Clap, Spin/Ground Pound и Mahito. Анимации работают
+через Player Animation Library и BendyLib; движение блокируется клиентским Forge-
+обработчиком без Fabric mixin. Сетевые пакеты проверяют отправителя и диапазоны.
 
-1. ✅ ГОТОВО — `GrabInteractionHandler` + `GrabInputHandler` + `GrabClientEffects`.
-   Первая играбельная механика (захват/бросок). Регистрация: сервер —
-   `CoopMoves.commonSetup` (под `enableGrab`); клиент — `CoopMovesClient`
-   (`onClientSetup` + `onRegisterKeyMappings`).
-2. Группа HighFive — **база готова** (`HighFiveHandler` + `HighFiveClientHandler`,
-   клавиша H). Остаток группы (перевести дальше): `HighFiveHugHandler`,
-   `HighFiveQTEHugHandler`, `HuddleHandler`, `QTEManager` + QTE-пакеты.
-3. Dap-семейство: `ChargedDapHandler`, `DapSessionManager`, `DapComboChain`,
-   `DapFusionHandler`, `MeteorStrikeHandler`, `PerfectDapComboHandler`,
-   `FacingDapHandler`, `NormalFacingDapHandler`, `DapHoldHandler`, `FallDapHandler`,
-   `HeavenDapPayloads`, `SitHandler`.
-4. `PushInteractionHandler` (заменить STUB), `FallCatchHandler`, `MarioJumpHandler`,
-   `KickHandler`, `SlapHandler`, `ClapHandler`, `SpinHandler` (STUB),
-   `GroundPoundHandler`.
-5. Mahito + вспомогательные: `MahitoTrollHandler`, `MahitoCraftingHandler`,
-   `AnimationTickHandler`, `LaunchedPlayerTracker`, `CarryingSlowdown`,
-   `PlayerCleanupHandler`, `DebugQTECommand`.
-6. Этап 5 — 11 миксинов (перенацелить на 1.20.1 + Mojmap, добавить в
-   `coopmoves.mixins.json`, который сейчас с пустыми списками).
-7. Этап 6 — keybinds (`RegisterKeyMappingsEvent`), HUD (`RegisterGuiOverlaysEvent`),
-   `TrajectoryRenderer` (`RenderLevelStageEvent`), impact-frames, шейдеры,
-   наполнить `FirstPersonAnimationTest`.
+Проект собирается командой `gradlew build`. Перед релизом всё ещё нужен ручной
+мультиплеерный прогон механик в настоящем клиенте Minecraft.
 
 ### Шаблон переноса (уже отработан)
 
@@ -199,32 +182,11 @@ Dap-семейства (Fusion/Meteor/Combo/Facing/Heaven/Hold, а также п
 - Клиентские `register()` — в `CoopMovesClient.onClientSetup`.
 - Анимации: `CoopAnim.play(player, ID)` / `CoopAnim.stop(player)`.
 
-## Заглушки (заполняются на следующих этапах)
-
-Эти классы созданы с настоящими сигнатурами, но пустыми телами, чтобы ядро
-компилировалось. Помечены в коде как `STAGE N STUB`:
-
-- `client/FirstPersonAnimationTest` — анимации рук от первого лица (Этап 6)
-- `client/ChargedDapClientHandler`, `client/DapHoldClientHandler` (Этап 4, Dap)
-- `client/HighFiveClientHandler`, `client/PushClientHandler`,
-  `client/MahitoClientHandler`, `client/FallDapClientHandler` (Этап 4)
-- `HighFiveHandler` — серверная часть (Этап 4)
-
 ## Как собрать (важно — прочитай)
 
 Проект использует ForgeGradle 6, которому нужен **Gradle 8.1.1** и **JDK 17**.
 
-В папке пока **нет `gradle-wrapper.jar`** (бинарник нельзя создать текстом). Сгенерируй wrapper одним из способов:
-
-**Вариант A — если установлен Gradle:**
-```
-cd "E:\Mod 1.20.1 anim"
-gradle wrapper --gradle-version 8.1.1
-```
-После этого появятся `gradlew.bat` и `gradle/wrapper/gradle-wrapper.jar`.
-
-**Вариант B — из Forge MDK:**
-Скачай Forge 1.20.1 MDK (47.4.4) с https://files.minecraftforge.net/, распакуй и скопируй оттуда `gradlew`, `gradlew.bat` и папку `gradle/wrapper/` в эту папку.
+Gradle Wrapper 8.1.1 уже находится в репозитории. Для сборки требуется JDK 17.
 
 ### Сборка и запуск
 ```

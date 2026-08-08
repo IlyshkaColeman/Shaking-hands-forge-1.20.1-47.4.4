@@ -3,7 +3,6 @@ package com.cooptest.client;
 import com.cooptest.KickHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
@@ -69,8 +68,7 @@ public final class KickClientHandler {
         }
         if (justPressed && isOnCooldown() && client.player != null) {
             long rem = cooldownEndMs - System.currentTimeMillis();
-            client.player.displayClientMessage(
-                    Component.literal("§cKick cooldown! " + String.format("%.1f", rem / 1000.0) + "s"), true);
+            MechanicHudTextClient.danger("KICK LOCKED", String.format("%.1fs cooldown", rem / 1000.0));
         }
         wasHeld = keyHeld;
     }

@@ -2,6 +2,7 @@ package com.cooptest;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.File;
@@ -40,9 +41,7 @@ public class CoopMovesConfig {
     public boolean enableDapCombo = true;
     public boolean enableDapHold = true;
     public boolean enableDapFirstPerson = true;
-    /** New synchronized ping-pong skill-check dap (two players catch a moving marker
-     *  inside the perfect/medium zone). When true, G uses this instead of the classic
-     *  hold-to-charge dap. */
+    /** Synchronized ping-pong skill-check dap. Classic tiers remain on Shift+G. */
     public boolean enableSyncDap = true;
     public boolean enableFallDap = true;
     public boolean enableFireDap = true;
@@ -159,7 +158,7 @@ public class CoopMovesConfig {
             try (FileReader reader = new FileReader(CONFIG_FILE)) {
                 INSTANCE = GSON.fromJson(reader, CoopMovesConfig.class);
                 if (INSTANCE == null) INSTANCE = new CoopMovesConfig();
-            } catch (IOException e) {
+            } catch (IOException | JsonParseException e) {
                 System.err.println("[CoopMoves] Failed to load config: " + e.getMessage());
                 INSTANCE = new CoopMovesConfig();
             }

@@ -4,13 +4,12 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
- * STAGE 6 STUB — first-person arm animations.
+ * Compatibility facade for first-person arm animations.
  *
  * The Fabric original drives first-person arm rendering alongside the third-person
  * KosmX animation. Signatures here match every call site in CoopAnimationHandler so
- * the animation core compiles and third-person animations work now; the bodies are
- * filled in during Stage 6 (client rendering), which is where the held-item /
- * first-person renderer mixins land.
+ * the animation core remains source-compatible. Actual Forge first-person rendering
+ * is handled by FpAnimationPlayer and CoopAnim.
  */
 @OnlyIn(Dist.CLIENT)
 public final class FirstPersonAnimationTest {

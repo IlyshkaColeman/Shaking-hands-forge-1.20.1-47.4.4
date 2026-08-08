@@ -70,6 +70,13 @@ public class CoopMoves {
             if (cfg.enableHighFive) {
                 HighFiveHandler.register();
             }
+            if (cfg.enableHighFiveHug) {
+                HighFiveHugHandler.register();
+                HighFiveQTEHugHandler.register();
+            }
+            if (cfg.enableHighFive) {
+                HuddleHandler.register();
+            }
             if (cfg.enableMarioJump) {
                 MarioJumpHandler.register();
             }
@@ -89,9 +96,26 @@ public class CoopMoves {
             SitHandler.register();
             if (cfg.enableDap) {
                 ChargedDapHandler.register();
+                DapSessionManager.register();
+                DapFusionHandler.register();
+                MeteorStrikeHandler.register();
+                PerfectDapComboHandler.register();
+                FacingDapHandler.register();
                 NormalFacingDapHandler.register();
                 DivineFlamCombo.register();
                 FireSlapHandler.register();
+            }
+            if (cfg.enableDapHold) {
+                DapHoldHandler.register();
+            }
+            if (cfg.enableFallDap) {
+                FallDapHandler.register();
+            }
+            if (cfg.enableMahito) {
+                MahitoTrollHandler.register();
+            }
+            if (cfg.enableSlap) {
+                SlapHandler.register();
             }
 
             LOGGER.info("[CoopMoves] common setup complete");

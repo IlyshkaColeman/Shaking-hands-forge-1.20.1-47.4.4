@@ -5,6 +5,7 @@ import com.cooptest.QTEManager;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -12,6 +13,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -51,6 +53,9 @@ public final class HighFiveClientHandler {
     private static long lastHighFiveHitMs = 0;
     private static long comboWindowUntil = 0;
 
+    public static final IGuiOverlay HUD = (gui, graphics, partialTick, width, height) ->
+            renderHud(graphics, width, height);
+
     /** Set by HighFiveHandler.ComboWindowMsg — opens the local H+H combo window (~1s). */
     public static void onComboWindow(java.util.UUID playerId) {
         Minecraft mc = Minecraft.getInstance();
@@ -58,6 +63,51 @@ public final class HighFiveClientHandler {
     }
 
     public static boolean isInComboWindow() { return System.currentTimeMillis() < comboWindowUntil; }
+
+    private static void renderHud(GuiGraphics graphics, int width, int height) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null) return;
+        long now = System.currentTimeMillis();
+
+        long flashDuration = switch (currentTier) {
+            case 1 -> 250L;
+            case 2 -> 350L;
+            case 3 -> 500L;
+            default -> 200L;
+        };
+        long elapsed = now - flashStartTime;
+        if (flashStartTime > 0 && elapsed >= 0 && elapsed < flashDuration) {
+            float progress = elapsed / (float) flashDuration;
+            int baseAlpha = switch (currentTier) {
+                case 1 -> 150;
+                case 2 -> 200;
+                case 3 -> 255;
+                default -> 120;
+            };
+            int alpha = Math.max(0, Math.min(255, (int) ((1.0f - progress) * baseAlpha)));
+            int rgb = switch (currentTier) {
+                case 1 -> 0xFFCC00;
+                case 2 -> 0x00FF88;
+                case 3 -> 0xFFFFFF;
+                default -> 0xFFFF99;
+            };
+            graphics.fill(0, 0, width, height, (alpha << 24) | rgb);
+        }
+
+        UUID myId = client.player.getUUID();
+        if (raisedHands.getOrDefault(myId, false)) {
+            HudTextRenderer.drawCenterPrompt(graphics, "READY FOR HIGH FIVE!", width / 2,
+                    height / 2 - 42, 0xFFFFF45A, 0xFFFFB800);
+        }
+
+        if (isInComboWindow() && !FusionClientHandler.isQTEOpen() && !FusionClientHandler.isGWindowOpen()) {
+            long remaining = comboWindowUntil - now;
+            String text = "[H] COMBO   [G] HUG   " + String.format("%.1fs", remaining / 1000.0);
+            int color = remaining > 500 ? 0xFFFFFF55 : 0xFFFF6622;
+            HudTextRenderer.drawCenterImpact(graphics, text, width / 2, height / 2 + 10,
+                    color, remaining > 500 ? 0xFFFFD04A : 0xFFFF2200);
+        }
+    }
 
     private static final Map<UUID, Boolean> raisedHands = new HashMap<>();
     private static final Map<UUID, Long> highFiveAnimStart = new HashMap<>();
@@ -98,14 +148,14 @@ public final class HighFiveClientHandler {
             if (QTEClientHandler.isActive()) {
                 QTEClientHandler.handleKeyPress("H");
             } else if (FusionClientHandler.isQTEOpen()) {
-                QTEManager.sendButtonPress("H");
+                FusionClientHandler.handleQTEPress("H");
             } else if (isInComboWindow()) {
                 HighFiveHandler.sendComboRequest();
             } else if (client.options.keyUse.isDown() && player.getMainHandItem().isEmpty()) {
                 // Right-click held + H = sike bait.
                 HighFiveHandler.sendSikeRequest();
             } else if (!player.getMainHandItem().isEmpty()) {
-                player.displayClientMessage(Component.literal("§cHands must be empty for high five!"), true);
+                player.displayClientMessage(Component.literal("§c§lEMPTY HANDS §7needed for high five"), true);
             } else {
                 raisedHands.put(myId, true);
                 HighFiveHandler.sendHighFiveRequest();
@@ -118,6 +168,17 @@ public final class HighFiveClientHandler {
 
     public static void onHandRaisedSync(UUID playerId, boolean raised) {
         raisedHands.put(playerId, raised);
+        if (raised) return;
+
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) return;
+        for (AbstractClientPlayer p : client.level.players()) {
+            if (p.getUUID().equals(playerId)
+                    && CoopAnimationHandler.getAnimState(playerId) == CoopAnimationHandler.AnimState.HIGHFIVE_START) {
+                CoopAnimationHandler.setAnimStateFromNetwork(p, CoopAnimationHandler.AnimState.NONE.ordinal());
+                break;
+            }
+        }
     }
 
     public static void onHighFiveAnim(UUID playerId, int animState) {
@@ -156,13 +217,13 @@ public final class HighFiveClientHandler {
             lastHighFiveHitMs = now;
             currentTier = tier;
             client.player.swing(InteractionHand.MAIN_HAND);
-            String message = switch (tier) {
-                case 1 -> "§e Nice High Five! ";
-                case 2 -> "§a§l BIG HIGH FIVE! ";
-                case 3 -> "§c§l⚡ EXPLOSIVE HIGH FIVE! ⚡";
-                default -> "§6 High Five!";
-            };
-            client.player.displayClientMessage(Component.literal(message), true);
+            switch (tier) {
+                case 1 -> MechanicHudTextClient.warning("NICE HIGH FIVE", "clean contact");
+                case 2 -> MechanicHudTextClient.success("BIG HIGH FIVE", "impact boosted");
+                case 3 -> MechanicHudTextClient.show("EXPLOSIVE HIGH FIVE", "shockwave released",
+                        com.cooptest.MechanicHudText.EPIC, 1700L);
+                default -> MechanicHudTextClient.info("HIGH FIVE", "hands connected");
+            }
         }
     }
 
@@ -197,6 +258,13 @@ public final class HighFiveClientHandler {
             }
         }
         return false;
+    }
+
+    public static boolean isLocalPlayerFrozen() {
+        Minecraft client = Minecraft.getInstance();
+        return client.player != null
+                && CoopAnimationHandler.getAnimState(client.player.getUUID())
+                == CoopAnimationHandler.AnimState.HIGHFIVE_HIT_COMBO;
     }
 
     public static float getHighFiveAnimProgress(UUID playerId) {

@@ -142,9 +142,7 @@ public final class SlapHandler {
         PoseNetworking.broadcastAnimState(attacker, ANIM_SLAP);
 
         final UUID victimId = victim.getUUID();
-        new Thread(() -> {
-            try { Thread.sleep(IMPACT_DELAY_MS); } catch (InterruptedException ignored) {}
-            attacker.getServer().execute(() -> {
+        ServerTaskScheduler.scheduleMillis(attacker.getServer(), IMPACT_DELAY_MS, () -> {
                 ServerPlayer v = attacker.getServer().getPlayerList().getPlayer(victimId);
                 if (v == null) return;
                 Vec3 hitPos = v.position().add(0, 1.7, 0);
@@ -160,8 +158,7 @@ public final class SlapHandler {
                 world.sendParticles(ParticleTypes.ENCHANTED_HIT, hitPos.x, hitPos.y, hitPos.z, 6, 0.1, 0.1, 0.1, 0.08);
                 world.playSound(null, hitPos.x, hitPos.y, hitPos.z, ModSounds.SLAP.get(), SoundSource.PLAYERS, 1.4f, 1.0f);
                 world.playSound(null, hitPos.x, hitPos.y, hitPos.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 0.8f, 2.0f);
-            });
-        }).start();
+        });
     }
 
     private static void executeFrontSlap(ServerPlayer attacker, ServerPlayer victim) {
@@ -173,9 +170,7 @@ public final class SlapHandler {
         PoseNetworking.broadcastAnimState(attacker, ANIM_SLAP_FRONT);
 
         final UUID victimId = victim.getUUID();
-        new Thread(() -> {
-            try { Thread.sleep(FRONT_IMPACT_MS); } catch (InterruptedException ignored) {}
-            attacker.getServer().execute(() -> {
+        ServerTaskScheduler.scheduleMillis(attacker.getServer(), FRONT_IMPACT_MS, () -> {
                 ServerPlayer v = attacker.getServer().getPlayerList().getPlayer(victimId);
                 if (v == null) return;
                 Vec3 hitPos = v.position().add(0, 1.7, 0);
@@ -187,7 +182,6 @@ public final class SlapHandler {
                 world.sendParticles(ParticleTypes.SWEEP_ATTACK, hitPos.x, hitPos.y, hitPos.z, 4, 0.1, 0.05, 0.1, 0.05);
                 world.playSound(null, hitPos.x, hitPos.y, hitPos.z, ModSounds.SLAP.get(), SoundSource.PLAYERS, 1.4f, 0.9f);
                 world.playSound(null, hitPos.x, hitPos.y, hitPos.z, SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 0.8f, 1.8f);
-            });
-        }).start();
+        });
     }
 }

@@ -41,7 +41,8 @@ public final class SpinHandler {
         public static SpinStartMsg decode(FriendlyByteBuf buf) { return new SpinStartMsg(); }
         public static void handle(SpinStartMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null) onSpinStart(p); });
+            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null
+                    && CoopMovesConfig.get().enableSpin) onSpinStart(p); });
             c.setPacketHandled(true);
         }
     }

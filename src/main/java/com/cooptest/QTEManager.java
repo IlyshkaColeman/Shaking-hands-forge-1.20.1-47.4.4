@@ -305,13 +305,14 @@ public final class QTEManager {
     /** C2S: the client pressed the expected QTE button. */
     public record QTEButtonPressMsg(String button) {
         public static void encode(QTEButtonPressMsg m, FriendlyByteBuf buf) { buf.writeUtf(m.button); }
-        public static QTEButtonPressMsg decode(FriendlyByteBuf buf) { return new QTEButtonPressMsg(buf.readUtf()); }
+        public static QTEButtonPressMsg decode(FriendlyByteBuf buf) { return new QTEButtonPressMsg(buf.readUtf(16)); }
         public static void handle(QTEButtonPressMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
             c.enqueueWork(() -> {
                 ServerPlayer player = c.getSender();
                 if (player == null) return;
                 String button = m.button();
+                if (!("G".equals(button) || "H".equals(button) || "J".equals(button))) return;
                 // Central QTE dispatch chain (Fabric: ChargedDapHandler's QTE receiver).
                 if (PerfectDapComboHandler.onButtonPress(player, button)) return;
                 if (DapFusionHandler.onQTEButtonPress(player, button)) return;
@@ -331,7 +332,7 @@ public final class QTEManager {
             buf.writeLong(m.windowStart); buf.writeLong(m.windowEnd);
         }
         public static QTEWindowMsg decode(FriendlyByteBuf buf) {
-            return new QTEWindowMsg(buf.readUUID(), buf.readUtf(), buf.readInt(), buf.readLong(), buf.readLong());
+            return new QTEWindowMsg(buf.readUUID(), buf.readUtf(16), buf.readInt(), buf.readLong(), buf.readLong());
         }
         public static void handle(QTEWindowMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();

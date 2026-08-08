@@ -139,6 +139,8 @@ public class GrabMechanic {
     // ------------------------------------------------------------------ throw
 
     public static boolean tryThrow(ServerPlayer holder, float power) {
+        if (!Float.isFinite(power)) return false;
+        power = Math.max(0.0f, Math.min(1.0f, power));
         UUID heldId = holding.get(holder.getUUID());
         if (heldId == null) return false;
         if (isInShieldMode(holder.getUUID())) {
@@ -673,8 +675,11 @@ public class GrabMechanic {
     // ------------------------------------------------------------------ air control / cleanup
 
     public static void setAirMovementInput(UUID playerId, float forward, float strafe) {
-        if (thrownPlayers.containsKey(playerId)) {
-            airMovementInput.put(playerId, new float[]{forward, strafe});
+        if (thrownPlayers.containsKey(playerId) && Float.isFinite(forward) && Float.isFinite(strafe)) {
+            airMovementInput.put(playerId, new float[]{
+                    Math.max(-1.0f, Math.min(1.0f, forward)),
+                    Math.max(-1.0f, Math.min(1.0f, strafe))
+            });
         }
     }
 

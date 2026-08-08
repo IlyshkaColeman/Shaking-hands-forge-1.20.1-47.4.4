@@ -74,14 +74,12 @@ public final class SyncDapClientHandler {
         drawBar(g, pX, pTop, pW, pH, partnerMarker, false);
         label(g, mc, "P2", pX + pW / 2, pTop - 11);
 
-        String hint = "§7release §fG§7 in the zone";
-        int tw = mc.font.width(hint);
-        g.drawString(mc.font, hint, mainX + mainW / 2 - tw / 2, mainTop + mainH + 6, 0xFFCFCFCF, true);
+        HudTextRenderer.drawCenterCompact(g, "RELEASE G IN THE ZONE",
+                mainX + mainW / 2, mainTop + mainH + 8, 0xFFE8E8E8, 0xFF63FF8F);
     }
 
     private static void label(GuiGraphics g, Minecraft mc, String s, int centerX, int y) {
-        int w = mc.font.width(s);
-        g.drawString(mc.font, s, centerX - w / 2, y, 0xFFB0B0B8, true);
+        HudTextRenderer.drawCenterCompact(g, s, centerX, y, 0xFFB0B0B8, 0xFF5CEBFF);
     }
 
     /** Draws one bar with a frame, gradient background, gradient zones and a marker. */

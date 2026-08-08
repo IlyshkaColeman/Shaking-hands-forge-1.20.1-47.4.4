@@ -27,6 +27,9 @@ public class PoseNetworking {
     public static final HashMap<UUID, PoseState> poseStates = new HashMap<>();
     public static final HashMap<UUID, Float> chargeProgress = new HashMap<>();
 
+    /** Highest ordinal currently present in the client-only AnimState enum. */
+    private static final int MAX_ANIM_STATE_ORDINAL = 90;
+
     private static boolean isServerSide(NetworkEvent.Context c) {
         return c.getDirection().getReceptionSide().isServer();
     }
@@ -60,9 +63,17 @@ public class PoseNetworking {
             MinecraftServer server = sender.getServer();
             if (server == null) return;
 
-            UUID id = m.playerId();
+            if (m.poseOrdinal() < 0 || m.poseOrdinal() >= PoseState.values().length) {
+                CoopMoves.LOGGER.warn("Ignoring invalid pose ordinal {} from {}", m.poseOrdinal(), sender.getGameProfile().getName());
+                return;
+            }
+
+            // A client may only change its own state. Never trust a UUID carried
+            // by a C2S packet for ownership/identity.
+            UUID id = sender.getUUID();
             PoseState state = PoseState.values()[m.poseOrdinal()];
-            ServerPlayer requester = server.getPlayerList().getPlayer(id);
+            if (state == PoseState.GRAB_READY && !CoopMovesConfig.get().enableGrab) return;
+            ServerPlayer requester = sender;
 
             if (state == PoseState.GRAB_READY && HighFiveHandler.isInBlockingState(id)) {
                 if (requester != null) {
@@ -99,10 +110,13 @@ public class PoseNetworking {
                 if (isServerSide(c)) {
                     ServerPlayer sender = c.getSender();
                     if (sender == null || sender.getServer() == null) return;
-                    chargeProgress.put(m.playerId(), m.progress());
+                    if (!Float.isFinite(m.progress())) return;
+                    UUID playerId = sender.getUUID();
+                    float progress = Math.max(0.0f, Math.min(1.0f, m.progress()));
+                    chargeProgress.put(playerId, progress);
                     for (ServerPlayer p : sender.getServer().getPlayerList().getPlayers()) {
-                        if (!p.getUUID().equals(m.playerId())) {
-                            CoopNetwork.sendToPlayer(p, new ChargeSyncMsg(m.playerId(), m.progress()));
+                        if (!p.getUUID().equals(playerId)) {
+                            CoopNetwork.sendToPlayer(p, new ChargeSyncMsg(playerId, progress));
                         }
                     }
                 } else {
@@ -127,9 +141,10 @@ public class PoseNetworking {
                 if (isServerSide(c)) {
                     ServerPlayer sender = c.getSender();
                     if (sender == null || sender.getServer() == null) return;
+                    UUID playerId = sender.getUUID();
                     for (ServerPlayer p : sender.getServer().getPlayerList().getPlayers()) {
-                        if (!p.getUUID().equals(m.playerId())) {
-                            CoopNetwork.sendToPlayer(p, new ThrowAnimMsg(m.playerId()));
+                        if (!p.getUUID().equals(playerId)) {
+                            CoopNetwork.sendToPlayer(p, new ThrowAnimMsg(playerId));
                         }
                     }
                 } else {
@@ -155,9 +170,14 @@ public class PoseNetworking {
                 if (isServerSide(c)) {
                     ServerPlayer sender = c.getSender();
                     if (sender == null || sender.getServer() == null) return;
+                    if (m.animStateOrdinal() < 0 || m.animStateOrdinal() > MAX_ANIM_STATE_ORDINAL) {
+                        CoopMoves.LOGGER.warn("Ignoring invalid animation ordinal {} from {}", m.animStateOrdinal(), sender.getGameProfile().getName());
+                        return;
+                    }
+                    UUID playerId = sender.getUUID();
                     for (ServerPlayer p : sender.getServer().getPlayerList().getPlayers()) {
-                        if (!p.getUUID().equals(m.playerId())) {
-                            CoopNetwork.sendToPlayer(p, new AnimStateSyncMsg(m.playerId(), m.animStateOrdinal()));
+                        if (!p.getUUID().equals(playerId)) {
+                            CoopNetwork.sendToPlayer(p, new AnimStateSyncMsg(playerId, m.animStateOrdinal()));
                         }
                     }
                 } else {

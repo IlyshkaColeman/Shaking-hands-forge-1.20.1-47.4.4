@@ -40,8 +40,8 @@ public final class MeteorStrikeClientHandler {
         long remaining = abilityExpiry - System.currentTimeMillis();
         float pulse = (float) (Math.sin(System.currentTimeMillis() / 150.0) * 0.25 + 0.75);
         int alpha = (int) (pulse * 255) << 24;
-        String label = "☄ METEOR READY — press G to fire  (" + (remaining / 1000 + 1) + "s)";
-        int lx = (sw - mc.font.width(label)) / 2;
-        g.drawString(mc.font, Component.literal("§c§l" + label), lx, sh / 2 - 44, alpha | 0xFFFFFF, true);
+        String label = "METEOR READY  [G]  " + (remaining / 1000 + 1) + "s";
+        HudTextRenderer.drawCenterImpact(g, label, sw / 2, sh / 2 - 44,
+                alpha | 0xFFFFFF, alpha | 0xFF3322);
     }
 }

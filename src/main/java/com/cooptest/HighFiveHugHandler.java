@@ -50,7 +50,8 @@ public final class HighFiveHugHandler {
         public static HugHoldMsg decode(FriendlyByteBuf buf) { return new HugHoldMsg(); }
         public static void handle(HugHoldMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null) onPlayerHoldingH(p); });
+            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null
+                    && CoopMovesConfig.get().enableHighFiveHug) onPlayerHoldingH(p); });
             c.setPacketHandled(true);
         }
     }

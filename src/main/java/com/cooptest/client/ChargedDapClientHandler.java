@@ -4,6 +4,7 @@ import com.cooptest.ChargedDapHandler;
 import com.cooptest.CoopMovesConfig;
 import com.cooptest.CoopNetwork;
 import com.cooptest.DapFusionHandler;
+import com.cooptest.ModSounds;
 import com.cooptest.QTEManager;
 import com.cooptest.SyncDapHandler;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -16,6 +17,7 @@ import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -62,6 +64,7 @@ public final class ChargedDapClientHandler {
     private static boolean playerFrozen = false;
 
     private static long whiffCooldownEnd = 0;
+    private static long dapBadBlockEnd = 0;
 
     private static boolean inFireComboWindow = false;
     private static long fireComboWindowStart = 0;
@@ -75,6 +78,8 @@ public final class ChargedDapClientHandler {
     private static boolean resultPerfect = false;
 
     private static long heavenReadyStartTime = 0;
+    private static long lastFireChargeSoundMs = 0;
+    private static int fireChargeAudioStage = 0;
 
     // cinematic impact frames (textures under assets/testcoop/textures/gui/impact/)
     private static boolean perfectImpactActive = false;
@@ -142,22 +147,29 @@ public final class ChargedDapClientHandler {
             } else if (QTEClientHandler.isActive()) {
                 QTEClientHandler.handleKeyPress("G");
             } else if (FusionClientHandler.isQTEOpen()) {
-                QTEManager.sendButtonPress("G");
+                FusionClientHandler.handleQTEPress("G");
             } else if (FusionClientHandler.isGWindowOpen()) {
-                DapFusionHandler.sendGPress();
+                FusionClientHandler.handleGPress();
             } else if (playerFrozen) {
                 // scripted freeze (perfect dap / hug): swallow the press.
             } else if (onCooldown) {
                 long remaining = (whiffCooldownEnd - System.currentTimeMillis()) / 100;
-                player.displayClientMessage(Component.literal("§cDap on cooldown! " + (remaining / 10.0) + "s"), true);
+                player.displayClientMessage(Component.literal("§c§lCOOLDOWN §7Dap ready in §f" + (remaining / 10.0) + "s"), true);
             } else if (!player.getMainHandItem().isEmpty()) {
-                player.displayClientMessage(Component.literal("§cMain hand must be empty for charged dap!"), true);
-            } else if (CoopMovesConfig.get().enableSyncDap) {
-                // New synchronized ping-pong dap: engage and extend the hand (waiting pose).
+                player.displayClientMessage(Component.literal("§c§lEMPTY HAND §7needed for charged dap"), true);
+            } else if (CoopMovesConfig.get().enableSyncDap && !player.isShiftKeyDown()) {
+                // Start classic charge while looking for a synchronized partner. If the
+                // server pairs us, it cancels this charge and switches both clients to
+                // the timing bar; otherwise releasing G continues as a classic dap.
                 syncEngaged = true;
+                localCharging = true;
+                localChargeStartTime = System.currentTimeMillis();
+                CoopNetwork.sendToServer(new ChargedDapHandler.ChargeStartMsg());
                 CoopNetwork.sendToServer(new SyncDapHandler.SyncHoldMsg());
                 CoopAnimationHandler.startDapCharge(player);
             } else {
+                // Shift+G deliberately keeps the original charge/tier path available
+                // while synchronized G is enabled (Triple/Fire/Fusion/Heaven combos).
                 localCharging = true;
                 localChargeStartTime = System.currentTimeMillis();
                 CoopNetwork.sendToServer(new ChargedDapHandler.ChargeStartMsg());
@@ -167,9 +179,13 @@ public final class ChargedDapClientHandler {
         } else if (!dapDown && wasDapKeyDown) {
             if (syncEngaged) {
                 syncEngaged = false;
-                // Lock the marker where the bar currently is (or -1 if never became active).
-                int marker = SyncDapClientHandler.isActive() ? SyncDapClientHandler.lockAndClose() : -1;
+                boolean paired = SyncDapClientHandler.isActive();
+                int marker = paired ? SyncDapClientHandler.lockAndClose() : -1;
                 CoopNetwork.sendToServer(new SyncDapHandler.SyncLockMsg(marker));
+                if (!paired && localCharging) {
+                    CoopNetwork.sendToServer(new ChargedDapHandler.ChargeReleaseMsg());
+                }
+                localCharging = false;
                 CoopAnimationHandler.stopDapChargeLocalOnly(player);
             } else if (localCharging) {
                 localCharging = false;
@@ -197,9 +213,104 @@ public final class ChargedDapClientHandler {
 
         if (inFireComboWindow && System.currentTimeMillis() - fireComboWindowStart > FIRE_COMBO_WINDOW_MS)
             inFireComboWindow = false;
+
+        if (localCharging && !onCooldown) {
+            CoopAnimationHandler.keepDapChargeHeld(player, localFireCharge(Minecraft.getInstance()) > 0.05f);
+            updateFireChargeAudio(player);
+        } else resetFireChargeAudio();
+    }
+
+    @SubscribeEvent
+    public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || !localCharging || System.currentTimeMillis() < whiffCooldownEnd) return;
+
+        float fire = localFireCharge(mc);
+        if (fire <= 0.05f) return;
+
+        float heat = Math.max(0.0f, Math.min(1.0f, (fire - 0.05f) / 0.95f));
+        boolean heaven = heavenReady.contains(mc.player.getUUID());
+        float strength = 0.12f + heat * (heaven ? 2.35f : 1.65f);
+        double t = System.currentTimeMillis() + event.getPartialTick() * 50.0;
+        float rumble = (float) (Math.sin(t * 0.038) + Math.sin(t * 0.071) * 0.55 + Math.sin(t * 0.113) * 0.25);
+
+        event.setRoll(event.getRoll() + rumble * strength);
+        event.setYaw(event.getYaw() + (float) Math.sin(t * 0.049 + 0.7) * strength * 0.22f);
+        event.setPitch(event.getPitch() + (float) Math.sin(t * 0.057 + 1.9) * strength * 0.18f);
     }
 
     public static boolean isLocalPlayerCharging() { return localCharging; }
+
+    public static boolean isDapKeyDown() {
+        return dapKey != null && dapKey.isDown();
+    }
+
+    public static boolean isFireComboKeyDown() {
+        return fireComboKey != null && fireComboKey.isDown();
+    }
+
+    private static float localFireCharge(Minecraft mc) {
+        if (mc.player == null || !CoopMovesConfig.get().enableFireDap || !CoopMovesConfig.get().showFireChargeBar) return 0.0f;
+        return fireProgress.getOrDefault(mc.player.getUUID(), 0.0f);
+    }
+
+    private static void updateFireChargeAudio(LocalPlayer player) {
+        Minecraft mc = Minecraft.getInstance();
+        float fire = localFireCharge(mc);
+        if (fire <= 0.05f) {
+            resetFireChargeAudio();
+            return;
+        }
+
+        boolean heaven = heavenReady.contains(player.getUUID());
+        int stage = heaven ? 4 : (fire >= 0.99f ? 3 : (fire >= 0.65f ? 2 : 1));
+        if (stage > fireChargeAudioStage) {
+            playFireChargeStageCue(player, stage);
+            fireChargeAudioStage = stage;
+        }
+
+        long now = System.currentTimeMillis();
+        long interval = fire >= 0.99f ? 2400L : (fire >= 0.65f ? 3000L : 3900L);
+        if (now - lastFireChargeSoundMs < interval) return;
+        lastFireChargeSoundMs = now;
+
+        float heat = Math.max(0.0f, Math.min(1.0f, fire));
+        player.playSound(ModSounds.FIRE_CHARGE_LAVA.get(), 0.18f + heat * 0.26f, 0.82f + heat * 0.10f);
+        if (fire >= 0.65f) {
+            player.playSound(ModSounds.FIRE_CHARGE_RUMBLE.get(), 0.18f + heat * 0.24f, 0.58f + heat * 0.08f);
+        }
+        if (fire >= 0.99f) {
+            player.playSound(ModSounds.FIRE_CHARGE_VOLCANO.get(), 0.20f + heat * 0.20f, 0.55f);
+        }
+    }
+
+    private static void playFireChargeStageCue(LocalPlayer player, int stage) {
+        switch (stage) {
+            case 1 -> {
+                player.playSound(ModSounds.FIRE_CHARGE_IGNITE.get(), 0.95f, 0.82f);
+                player.playSound(ModSounds.FIRE_CHARGE_LAVA.get(), 0.42f, 0.88f);
+                player.playSound(ModSounds.FIRE_CHARGE_RUMBLE.get(), 0.38f, 0.72f);
+            }
+            case 2 -> {
+                player.playSound(ModSounds.FIRE_CHARGE_VOLCANO.get(), 0.72f, 0.62f);
+                player.playSound(ModSounds.FIRE_CHARGE_RUMBLE.get(), 0.50f, 0.62f);
+            }
+            case 3 -> {
+                player.playSound(ModSounds.FIRE_CHARGE_WHOOSH.get(), 1.00f, 0.82f);
+                player.playSound(ModSounds.FIRE_CHARGE_RISER_BOOM.get(), 0.86f, 0.78f);
+            }
+            case 4 -> {
+                player.playSound(ModSounds.FIRE_CHARGE_RISER_BOOM.get(), 1.05f, 0.62f);
+                player.playSound(ModSounds.GALACTIC_DAP.get(), 0.70f, 0.50f);
+            }
+            default -> { }
+        }
+    }
+
+    private static void resetFireChargeAudio() {
+        lastFireChargeSoundMs = 0;
+        fireChargeAudioStage = 0;
+    }
 
     public static void cleanup(UUID playerId) {
         chargeProgress.remove(playerId);
@@ -371,14 +482,14 @@ public final class ChargedDapClientHandler {
         if (inFireComboWindow) {
             long elapsed = now - fireComboWindowStart;
             if (FIRE_COMBO_WINDOW_MS - elapsed > 0) {
-                String text = "§c§l🔥 PRESS J! 🔥";
-                int textWidth = mc.font.width(text);
-                int textX = (screenWidth - textWidth) / 2, textY = screenHeight / 2 + 10;
+                String text = "PRESS J!";
+                int textY = screenHeight / 2 + 10;
                 float pulse = (float) (Math.sin(now / 80.0) * 0.4 + 0.6);
                 int alpha = (int) (pulse * 255);
                 float timeProgress = (float) elapsed / FIRE_COMBO_WINDOW_MS;
                 int color = timeProgress < 0.5f ? (alpha << 24) | 0xFF8800 : (alpha << 24) | 0xFF0000;
-                g.drawString(mc.font, text, textX, textY, color, true);
+                HudTextRenderer.drawCenterImpact(g, text, screenWidth / 2, textY,
+                        color, timeProgress < 0.5f ? 0xFFFFF05A : 0xFFFF2200);
                 int barWidth = 100, barHeight = 3;
                 int barX = (screenWidth - barWidth) / 2, barY = textY + 12;
                 g.fill(barX, barY, barX + barWidth, barY + barHeight, 0x80000000);
@@ -388,10 +499,12 @@ public final class ChargedDapClientHandler {
         }
 
         // main charge bar
-        if (localCharging && !onCooldown) {
+        if (localCharging && !onCooldown
+                && (CoopMovesConfig.get().showDapChargeBar || CoopMovesConfig.get().showFireChargeBar)) {
             long elapsed = now - localChargeStartTime;
             float chargePercent = Math.min(1.0f, (float) elapsed / CHARGE_TIME_MS);
-            float myFire = CoopMovesConfig.get().enableFireDap ? fireProgress.getOrDefault(myId, 0f) : 0f;
+            float myFire = CoopMovesConfig.get().enableFireDap && CoopMovesConfig.get().showFireChargeBar
+                    ? fireProgress.getOrDefault(myId, 0f) : 0f;
             boolean isHeavenReady = heavenReady.contains(myId);
 
             int barWidth = 40, barHeight = 3;
@@ -399,6 +512,7 @@ public final class ChargedDapClientHandler {
             g.fill(barX - 1, barY - 1, barX + barWidth + 1, barY + barHeight + 1, 0x44000000);
 
             if (myFire > 0.05f) {
+                renderFireChargePrompt(g, screenWidth, barY, myFire, isHeavenReady);
                 g.fill(barX, barY, barX + (int) (barWidth * chargePercent), barY + barHeight, 0xBB00FF00);
                 int redWidth = (int) (barWidth * myFire);
                 if (isHeavenReady) {
@@ -439,6 +553,36 @@ public final class ChargedDapClientHandler {
         }
     }
 
+    private static void renderFireChargePrompt(GuiGraphics g, int screenWidth, int barY, float fire, boolean heaven) {
+        float visible = Math.max(0.0f, Math.min(1.0f, (fire - 0.05f) / 0.25f));
+        int alpha = (int) (120 + 135 * visible);
+        int packedAlpha = alpha << 24;
+        String text;
+        int color;
+        int accent;
+        if (heaven) {
+            text = "HEAVEN DAP READY!";
+            color = packedAlpha | 0xFF6A3A;
+            accent = packedAlpha | 0xE000FF;
+        } else if (fire >= 0.99f) {
+            text = "MEGA DAP READY!";
+            color = packedAlpha | 0xFF2A00;
+            accent = packedAlpha | 0xFF0000;
+        } else if (fire >= 0.65f) {
+            text = "VOLCANIC DAP RISING";
+            color = packedAlpha | 0xFF3C12;
+            accent = packedAlpha | 0xF00000;
+        } else {
+            text = "VOLCANIC DAP CHARGING";
+            color = packedAlpha | 0xF05A1A;
+            accent = packedAlpha | 0xC02000;
+        }
+
+        HudTextRenderer.drawCenterImpact(g, text, screenWidth / 2, barY - 54, color, accent);
+        HudTextRenderer.drawCenterCompact(g, "FIRE " + Math.round(fire * 100.0f) + "%",
+                screenWidth / 2, barY - 38, packedAlpha | 0xFF9A6A, packedAlpha | 0xE32B00);
+    }
+
     // -------------------------------------------------------------- misc state
     /** Set by ChargedDapHandler.PerfectDapFreezePayload (sit / perfect-dap freeze). */
     public static void onPerfectDapFreeze(boolean frozen) { playerFrozen = frozen; }
@@ -465,7 +609,9 @@ public final class ChargedDapClientHandler {
         facingDapImpactStartMs = System.currentTimeMillis();
     }
 
-    public static void triggerDapBadBlock() { }
+    public static boolean isDapBadBlocking() { return System.currentTimeMillis() < dapBadBlockEnd; }
+
+    public static void triggerDapBadBlock() { dapBadBlockEnd = System.currentTimeMillis() + 1667L; }
 
     public static void setInFaceDapSession(boolean active) { inFaceDapSession = active; }
     public static boolean isInFaceDapSession() { return inFaceDapSession; }

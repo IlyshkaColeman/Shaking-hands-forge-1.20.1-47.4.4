@@ -77,9 +77,10 @@ public final class SpinClientHandler {
         if (!localSpinning) return;
         float pulse = (float) (Math.sin(System.currentTimeMillis() / 180.0) * 0.2 + 0.8);
         int a = (int) (pulse * 200) << 24;
-        String label = localHasRider ? "↻ SPINNING [SHIFT] LAUNCH!" : "↻ SPINNING";
-        int lx = (sw - mc.font.width(label)) / 2;
-        g.drawString(mc.font, Component.literal((localHasRider ? "§e§l" : "§b") + label), lx, sh / 2 - 30, a | 0xFFFFFF, true);
+        String label = localHasRider ? "SPINNING  [SHIFT] LAUNCH!" : "SPINNING";
+        HudTextRenderer.drawCenterImpact(g, label, sw / 2, sh / 2 - 30,
+                a | (localHasRider ? 0xFFFFFF : 0x86F4FF),
+                a | (localHasRider ? 0xFFE066 : 0x00D9FF));
     }
 
     public static boolean isLocalPlayerSpinning() { return localSpinning; }

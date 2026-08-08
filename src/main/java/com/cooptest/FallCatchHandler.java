@@ -2,7 +2,6 @@ package com.cooptest;
 
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -65,7 +64,7 @@ public final class FallCatchHandler {
                     catchCooldowns.put(playerId, now + CATCH_COOLDOWN_MS);
                     ServerPlayer player = server.getPlayerList().getPlayer(playerId);
                     if (player != null) {
-                        player.displayClientMessage(Component.literal("§c✗ Catch missed! 1 sec cooldown"), true);
+                        MechanicHudText.danger(player, "CATCH MISSED", "1.0s cooldown");
                     }
                 }
                 it.remove();
@@ -163,8 +162,8 @@ public final class FallCatchHandler {
             PoseNetworking.poseStates.put(catcher.getUUID(), PoseState.NONE);
             PoseNetworking.broadcastPoseChange(server, catcher.getUUID(), PoseState.NONE);
         }
-        caught.displayClientMessage(Component.literal("§a§l✓ " + catcher.getName().getString() + " caught you!"), true);
-        catcher.displayClientMessage(Component.literal("§a§l✓ PERFECT CATCH! " + caught.getName().getString()), true);
+        MechanicHudText.success(caught, "SAVED!", catcher.getName().getString() + " caught you");
+        MechanicHudText.success(catcher, "PERFECT CATCH", caught.getName().getString() + " secured");
     }
 
     public static void cleanup(UUID playerId) {

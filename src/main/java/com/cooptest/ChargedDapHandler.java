@@ -720,7 +720,9 @@ public final class ChargedDapHandler {
                                 spawnFireHandParticles(player, fire);
                                 if (fire >= 0.99f) {
                                     fireMaxedStartTime.putIfAbsent(id, now);
-                                    if (now - fireMaxedStartTime.get(id) >= HEAVEN_READY_TIME_MS && !heavenReady.contains(id)) {
+                                    if (CoopMovesConfig.get().enableHeavenDap
+                                            && now - fireMaxedStartTime.get(id) >= HEAVEN_READY_TIME_MS
+                                            && !heavenReady.contains(id)) {
                                         heavenReady.add(id);
                                         player.serverLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
                                                 SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1.0f, 0.8f);
@@ -786,7 +788,7 @@ public final class ChargedDapHandler {
     private static void onChargeStart(ServerPlayer player) {
         UUID uuid = player.getUUID();
         if (HighFiveHandler.hasHandRaised(uuid) || HighFiveHandler.isInBlockingAnimation(uuid)) { broadcastChargeCancel(player); return; }
-        if (isInComboCooldown(uuid)) { player.displayClientMessage(Component.literal("§cWait 1 second after combo!"), true); broadcastChargeCancel(player); return; }
+        if (isInComboCooldown(uuid)) { player.displayClientMessage(Component.literal("§c§lWAIT §7combo cooldown §f1.0s"), true); broadcastChargeCancel(player); return; }
         if (FallCatchHandler.isInCatchReadyMode(uuid)) return;
         if (isOnCooldown(uuid)) return;
         if (!player.getMainHandItem().isEmpty()) return;
@@ -801,6 +803,7 @@ public final class ChargedDapHandler {
 
     private static void onChargeRelease(ServerPlayer player) {
         UUID uuid = player.getUUID();
+        if (CoopMovesConfig.get().enableSyncDap && SyncDapHandler.isBusy(uuid)) return;
         if (!chargeStartTime.containsKey(uuid)) return;
         long now = System.currentTimeMillis();
         float myCharge = getChargePercent(uuid);
@@ -847,7 +850,7 @@ public final class ChargedDapHandler {
             broadcastChargeCancel(player);
             cooldowns.put(uuid, now + whiffCooldownMs());
             broadcastWhiffCooldown(player, now + whiffCooldownMs());
-            player.displayClientMessage(Component.literal("§c✗ Whiff! 0.8s cooldown"), true);
+            player.displayClientMessage(Component.literal("§c§lX WHIFF! §7cooldown §f0.8s"), true);
             return;
         }
 
@@ -898,6 +901,13 @@ public final class ChargedDapHandler {
         chargeStartTime.remove(uuid);
         fireLevel.remove(uuid);
         fireStartTime.remove(uuid);
+    }
+
+    /** Cancels the parallel classic charge when SyncDap successfully forms a pair. */
+    static void cancelChargeForSync(ServerPlayer player) {
+        if (player == null) return;
+        clearChargeState(player.getUUID());
+        broadcastChargeCancel(player);
     }
 
     private static ServerPlayer findAnyDapPartner(ServerPlayer player) {
@@ -978,8 +988,8 @@ public final class ChargedDapHandler {
         boolean isPerfectDap = tier >= 3 && bothCharging && perfectHit;
         boolean isHighTier = tier >= 4;
         if (!isPerfectDap && !isHighTier && !arePlayersFacingEachOther(p1, p2)) {
-            p1.displayClientMessage(Component.literal("§c§lKeep eye contact!"), true);
-            p2.displayClientMessage(Component.literal("§c§lKeep eye contact!"), true);
+            p1.displayClientMessage(Component.literal("§c§lLOOK AT PARTNER §7keep eye contact"), true);
+            p2.displayClientMessage(Component.literal("§c§lLOOK AT PARTNER §7keep eye contact"), true);
             cooldowns.put(p1.getUUID(), now + 300);
             cooldowns.put(p2.getUUID(), now + 300);
             broadcastChargeCancel(p1); broadcastChargeCancel(p2);
@@ -1060,8 +1070,8 @@ public final class ChargedDapHandler {
         world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.8f, 0.5f);
         world.sendParticles(ParticleTypes.POOF, pos.x, pos.y, pos.z, 12, 0.4, 0.3, 0.4, 0.03);
         world.sendParticles(ParticleTypes.SMOKE, pos.x, pos.y, pos.z, 8, 0.3, 0.3, 0.3, 0.02);
-        p1.displayClientMessage(Component.literal("§7*missed!* timing off..."), true);
-        p2.displayClientMessage(Component.literal("§7*missed!* timing off..."), true);
+        p1.displayClientMessage(Component.literal("§c§lMISSED §7timing off"), true);
+        p2.displayClientMessage(Component.literal("§c§lMISSED §7timing off"), true);
         clearChargeState(p1.getUUID());
         clearChargeState(p2.getUUID());
         if (heavenReady.remove(p1.getUUID())) broadcastHeavenReadyStatus(p1.getServer(), p1.getUUID(), false);
@@ -1085,7 +1095,7 @@ public final class ChargedDapHandler {
         world.sendParticles(ParticleTypes.SMOKE, pos.x, pos.y, pos.z, 5, 0.15, 0.15, 0.15, 0.01);
         setBlockingAnimation(player.getUUID(), 330);
         PoseNetworking.broadcastAnimState(player, ANIM_NONE);
-        player.displayClientMessage(Component.literal("§7*whoosh*"), true);
+        player.displayClientMessage(Component.literal("§8whoosh..."), true);
     }
 
     // ================================================================ tiers 0-2
@@ -1203,7 +1213,8 @@ public final class ChargedDapHandler {
     // ================================================================ tier 4 (legendary)
     private static void executeTier4Legendary(ServerLevel world, Vec3 pos, ServerPlayer p1, ServerPlayer p2,
                                               boolean perfectHit, boolean bothCharging) {
-        boolean bothHeavenReady = heavenReady.contains(p1.getUUID()) && heavenReady.contains(p2.getUUID());
+        boolean bothHeavenReady = CoopMovesConfig.get().enableHeavenDap
+                && heavenReady.contains(p1.getUUID()) && heavenReady.contains(p2.getUUID());
         if (bothHeavenReady && perfectHit) {
             startHeavenDap(p1, p2, pos, world);
             activeHeavenParticles.add(new HeavenParticleSpawner(world, pos, 30000));
@@ -1251,7 +1262,8 @@ public final class ChargedDapHandler {
 
     // ================================================================ tier 5 (fire dap)
     private static void executeTier5FireDap(ServerLevel world, Vec3 pos, ServerPlayer p1, ServerPlayer p2, boolean perfectHit) {
-        boolean bothHeavenReady = heavenReady.contains(p1.getUUID()) && heavenReady.contains(p2.getUUID());
+        boolean bothHeavenReady = CoopMovesConfig.get().enableHeavenDap
+                && heavenReady.contains(p1.getUUID()) && heavenReady.contains(p2.getUUID());
         double speed1 = getMaxRecentSpeed(p1.getUUID()), speed2 = getMaxRecentSpeed(p2.getUUID());
         boolean bothFast = speed1 >= PERFECT_LEGENDARY_MIN_INDIVIDUAL_SPEED && speed2 >= PERFECT_LEGENDARY_MIN_INDIVIDUAL_SPEED;
         if (bothHeavenReady && bothFast) { startHeavenDap(p1, p2, pos, world); return; }
@@ -1560,11 +1572,9 @@ public final class ChargedDapHandler {
         int steps = 20;
         double radiusStep = (endRadius - startRadius) / steps;
         long stepDuration = durationMs / steps;
-        new Thread(() -> {
-            try {
-                for (int step = 0; step < steps; step++) {
-                    final double r = startRadius + radiusStep * step;
-                    world.getServer().execute(() -> {
+        for (int step = 0; step < steps; step++) {
+            final double r = startRadius + radiusStep * step;
+            ServerTaskScheduler.scheduleMillis(world.getServer(), stepDuration * step, () -> {
                         int pc = (int) (r * 20);
                         for (int i = 0; i < pc; i++) {
                             double a = Math.toRadians((360.0 / pc) * i);
@@ -1572,22 +1582,17 @@ public final class ChargedDapHandler {
                             world.sendParticles(ParticleTypes.CLOUD, x, center.y + 0.5, z, 0, Math.cos(a) * 0.4, 0.0, Math.sin(a) * 0.4, 0.6);
                             world.sendParticles(ParticleTypes.WHITE_ASH, x, center.y + 0.5, z, 0, Math.cos(a) * 0.4, 0.0, Math.sin(a) * 0.4, 0.5);
                         }
-                    });
-                    Thread.sleep(stepDuration);
-                }
-            } catch (InterruptedException ignored) {}
-        }).start();
+            });
+        }
     }
 
     private static void spawnExpandingFireRing(ServerLevel world, Vec3 center, double startRadius, double endRadius, int durationMs) {
         int steps = 15;
         double radiusStep = (endRadius - startRadius) / steps;
         long stepDuration = durationMs / steps;
-        new Thread(() -> {
-            try {
-                for (int step = 0; step < steps; step++) {
-                    final double r = startRadius + radiusStep * step;
-                    world.getServer().execute(() -> {
+        for (int step = 0; step < steps; step++) {
+            final double r = startRadius + radiusStep * step;
+            ServerTaskScheduler.scheduleMillis(world.getServer(), stepDuration * step, () -> {
                         int pc = (int) (r * 15);
                         for (int i = 0; i < pc; i++) {
                             double a = Math.toRadians((360.0 / pc) * i);
@@ -1595,49 +1600,36 @@ public final class ChargedDapHandler {
                             world.sendParticles(ParticleTypes.FLAME, x, center.y + 0.5, z, 0, Math.cos(a) * 0.35, 0.0, Math.sin(a) * 0.35, 0.5);
                             world.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, x, center.y + 0.5, z, 0, Math.cos(a) * 0.28, 0.0, Math.sin(a) * 0.28, 0.4);
                         }
-                    });
-                    Thread.sleep(stepDuration);
-                }
-            } catch (InterruptedException ignored) {}
-        }).start();
+            });
+        }
     }
 
     private static void spawnExpandingLegendarySonicBoom(ServerLevel world, Vec3 center) {
-        new Thread(() -> {
-            try {
-                spawnExpandingRing(world, center, 1.0, 6.0, 300); Thread.sleep(200);
-                spawnExpandingRing(world, center, 6.0, 15.0, 400); Thread.sleep(200);
-                spawnExpandingRing(world, center, 15.0, 30.0, 500);
-            } catch (InterruptedException ignored) {}
-        }).start();
+        spawnExpandingRing(world, center, 1.0, 6.0, 300);
+        ServerTaskScheduler.scheduleMillis(world.getServer(), 200,
+                () -> spawnExpandingRing(world, center, 6.0, 15.0, 400));
+        ServerTaskScheduler.scheduleMillis(world.getServer(), 400,
+                () -> spawnExpandingRing(world, center, 15.0, 30.0, 500));
     }
 
     private static void spawnSonicBoomCircles(ServerLevel world, Vec3 pos) {
-        new Thread(() -> {
-            try {
-                for (int circle = 0; circle < 3; circle++) {
-                    final double baseRadius = 2.0 + circle * 2.0;
-                    world.getServer().execute(() -> {
+        for (int circle = 0; circle < 3; circle++) {
+            final double baseRadius = 2.0 + circle * 2.0;
+            ServerTaskScheduler.scheduleMillis(world.getServer(), circle * 100L, () -> {
                         for (int i = 0; i < 60; i++) {
                             double a = Math.toRadians(i * 6);
                             double x = pos.x + Math.cos(a) * baseRadius, z = pos.z + Math.sin(a) * baseRadius;
                             world.sendParticles(ParticleTypes.WHITE_ASH, x, pos.y + 0.5, z, 3, 0.1, 0.3, 0.1, 0.05);
                             world.sendParticles(ParticleTypes.CLOUD, x, pos.y + 0.5, z, 2, 0.05, 0.2, 0.05, 0.02);
                         }
-                    });
-                    Thread.sleep(100);
-                }
-            } catch (InterruptedException ignored) {}
-        }).start();
+            });
+        }
     }
 
     private static void spawnFireDapSonicBoom(ServerLevel world, Vec3 pos) {
-        new Thread(() -> {
-            try {
-                spawnExpandingFireRing(world, pos, 2.0, 10.0, 250); Thread.sleep(100);
-                spawnExpandingFireRing(world, pos, 5.0, 15.0, 350);
-            } catch (InterruptedException ignored) {}
-        }).start();
+        spawnExpandingFireRing(world, pos, 2.0, 10.0, 250);
+        ServerTaskScheduler.scheduleMillis(world.getServer(), 100,
+                () -> spawnExpandingFireRing(world, pos, 5.0, 15.0, 350));
     }
 
     private static void spawnFireHandParticles(ServerPlayer player, float fireLvl) {

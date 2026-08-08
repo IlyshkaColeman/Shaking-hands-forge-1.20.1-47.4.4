@@ -79,6 +79,9 @@ dependencies {
 
     // KosmX Player Animation Library (Forge) — replaces ZigyTheBird PAL used on Fabric
     implementation fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:${project.playeranim_version}")
+
+    // Required client companion for player-animation-lib; also present in runClient.
+    runtimeOnly fg.deobf(files('libs/bendy-lib-forge-4.0.0.jar'))
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -162,6 +165,7 @@ tasks.register('fixAnimations') {
 }
 
 tasks.named('jar', Jar).configure {
+    archiveFileName = project.release_jar_name
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,

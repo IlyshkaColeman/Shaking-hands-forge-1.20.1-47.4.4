@@ -1,7 +1,6 @@
 package com.cooptest;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -134,6 +133,7 @@ public final class SyncDapHandler {
         if (!CoopMovesConfig.get().enableSyncDap) return;
         UUID id = player.getUUID();
         if (!player.getMainHandItem().isEmpty()) return;
+        if (!ChargedDapHandler.isCharging(id)) return;
         if (pair.containsKey(id) || holding.containsKey(id)) return;
 
         ServerPlayer partner = findWaitingPartner(player);
@@ -143,6 +143,8 @@ public final class SyncDapHandler {
             long now = System.currentTimeMillis();
             pair.put(id, pid); pair.put(pid, id);
             pairStart.put(id, now); pairStart.put(pid, now);
+            ChargedDapHandler.cancelChargeForSync(player);
+            ChargedDapHandler.cancelChargeForSync(partner);
             CoopNetwork.sendToPlayer(player, new SyncActiveMsg(true));
             CoopNetwork.sendToPlayer(partner, new SyncActiveMsg(true));
             PoseNetworking.broadcastAnimState(player, ANIM_DAP_CHARGE_IDLE);
@@ -152,7 +154,7 @@ public final class SyncDapHandler {
         } else {
             holding.put(id, System.currentTimeMillis());
             PoseNetworking.broadcastAnimState(player, ANIM_DAP_CHARGING);
-            player.displayClientMessage(Component.literal("§7Waiting for a partner to press G..."), true);
+            MechanicHudText.info(player, "WAITING FOR HOMIE", "partner must hold G");
         }
     }
 
@@ -176,11 +178,8 @@ public final class SyncDapHandler {
     private static void onLock(ServerPlayer player, int marker) {
         UUID id = player.getUUID();
         if (holding.remove(id) != null) {
-            // Was holding G with no partner engaged. If aiming at another (non-dapping)
-            // player's head, slap them (back / front slap); otherwise drop the pose.
-            if (!SlapHandler.checkSlapOnRelease(player)) {
-                PoseNetworking.broadcastAnimState(player, ANIM_NONE);
-            }
+            // No synchronized partner was found. ChargedDapClientHandler sends the
+            // classic ChargeRelease immediately after this cancellation packet.
             return;
         }
         if (!pair.containsKey(id)) return;
@@ -226,21 +225,28 @@ public final class SyncDapHandler {
         world.sendParticles(ParticleTypes.SMOKE, mid.x, mid.y - 0.6, mid.z, 12, 0.2, 0.1, 0.2, 0.02);
         PoseNetworking.broadcastAnimState(a, ANIM_NONE);
         PoseNetworking.broadcastAnimState(b, ANIM_NONE);
-        a.displayClientMessage(Component.literal("§6You're shitting yourself"), true);
-        b.displayClientMessage(Component.literal("§6You're shitting yourself"), true);
+        MechanicHudText.warning(a, "SYNC FAILED", "markers missed");
+        MechanicHudText.warning(b, "SYNC FAILED", "markers missed");
     }
 
     private static void impact(ServerPlayer a, ServerPlayer b, int tier) {
         // Reuse the classic dap tier effects (particles, sounds, and — for the green
         // cube — the perfect-dap impact frames + silhouette shader).
         ChargedDapHandler.runSyncDap(a, b, tier);
-        String msg = switch (tier) {
-            case 2 -> "§6§l✋ PERFECT SYNC DAP! ✋";
-            case 1 -> "§a✋ Good Dap! ✋";
-            default -> "§7Dap";
-        };
-        a.displayClientMessage(Component.literal(msg), true);
-        b.displayClientMessage(Component.literal(msg), true);
+        switch (tier) {
+            case 2 -> {
+                MechanicHudText.send(a, "PERFECT SYNC DAP", "marker snapped", MechanicHudText.EPIC, 1650L);
+                MechanicHudText.send(b, "PERFECT SYNC DAP", "marker snapped", MechanicHudText.EPIC, 1650L);
+            }
+            case 1 -> {
+                MechanicHudText.success(a, "GOOD SYNC DAP", "clean hit");
+                MechanicHudText.success(b, "GOOD SYNC DAP", "clean hit");
+            }
+            default -> {
+                MechanicHudText.info(a, "DAP", "connected");
+                MechanicHudText.info(b, "DAP", "connected");
+            }
+        }
     }
 
     // ------------------------------------------------------------------ tick / cleanup
@@ -262,10 +268,17 @@ public final class SyncDapHandler {
         for (UUID id : new java.util.ArrayList<>(pairStart.keySet())) {
             Long start = pairStart.get(id);
             ServerPlayer p = server.getPlayerList().getPlayer(id);
-            if (p == null) { UUID pid = pair.get(id); clearPair(id, pid); continue; }
+            if (p == null) {
+                UUID pid = pair.get(id);
+                notifyInactive(server, pid);
+                clearPair(id, pid);
+                continue;
+            }
             if (start != null && now - start > LOCK_WAIT_MS + HOLD_TIMEOUT_MS) {
                 UUID pid = pair.get(id);
                 PoseNetworking.broadcastAnimState(p, ANIM_NONE);
+                notifyInactive(server, id);
+                notifyInactive(server, pid);
                 clearPair(id, pid);
             }
         }
@@ -276,11 +289,20 @@ public final class SyncDapHandler {
         if (b != null) { pair.remove(b); pairStart.remove(b); locked.remove(b); }
     }
 
-    public static void cleanup(UUID id) {
+    private static void notifyInactive(MinecraftServer server, UUID id) {
+        if (server == null || id == null) return;
+        ServerPlayer player = server.getPlayerList().getPlayer(id);
+        if (player != null) CoopNetwork.sendToPlayer(player, new SyncActiveMsg(false));
+    }
+
+    public static void cleanup(UUID id, MinecraftServer server) {
         holding.remove(id);
         UUID pid = pair.get(id);
+        notifyInactive(server, pid);
         clearPair(id, pid);
     }
+
+    public static void cleanup(UUID id) { cleanup(id, null); }
 
     public static boolean isBusy(UUID id) {
         return holding.containsKey(id) || pair.containsKey(id);

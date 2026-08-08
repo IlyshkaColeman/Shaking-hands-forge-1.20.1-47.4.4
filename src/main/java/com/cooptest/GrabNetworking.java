@@ -37,8 +37,10 @@ public class GrabNetworking {
         public static void handle(ThrowRequestMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
             c.enqueueWork(() -> onServer(c, player -> {
-                if (GrabMechanic.isHolding(player)) {
-                    GrabMechanic.tryThrow(player, m.power());
+                CoopMovesConfig cfg = CoopMovesConfig.get();
+                if (cfg.enableGrab && cfg.enableThrow && cfg.enableYeet && cfg.enableGrabThrow
+                        && GrabMechanic.isHolding(player) && Float.isFinite(m.power())) {
+                    GrabMechanic.tryThrow(player, Math.max(0.0f, Math.min(1.0f, m.power())));
                 }
             }));
             c.setPacketHandled(true);
@@ -94,8 +96,13 @@ public class GrabNetworking {
         }
         public static void handle(AirMovementMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> onServer(c, player ->
-                    GrabMechanic.setAirMovementInput(player.getUUID(), m.forward(), m.strafe())));
+            c.enqueueWork(() -> onServer(c, player -> {
+                if (!Float.isFinite(m.forward()) || !Float.isFinite(m.strafe())) return;
+                GrabMechanic.setAirMovementInput(
+                        player.getUUID(),
+                        Math.max(-1.0f, Math.min(1.0f, m.forward())),
+                        Math.max(-1.0f, Math.min(1.0f, m.strafe())));
+            }));
             c.setPacketHandled(true);
         }
     }
@@ -105,7 +112,10 @@ public class GrabNetworking {
         public static ShieldToggleMsg decode(FriendlyByteBuf buf) { return new ShieldToggleMsg(); }
         public static void handle(ShieldToggleMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> onServer(c, GrabMechanic::toggleShieldMode));
+            c.enqueueWork(() -> onServer(c, player -> {
+                if (CoopMovesConfig.get().enableGrab && CoopMovesConfig.get().enableShieldMode)
+                    GrabMechanic.toggleShieldMode(player);
+            }));
             c.setPacketHandled(true);
         }
     }

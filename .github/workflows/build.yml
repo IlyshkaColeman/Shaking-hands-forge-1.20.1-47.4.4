@@ -34,7 +34,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: coopmoves-jar
+          name: Shaking-hands-forge-1.20.1-47.4.4
           path: build/libs/*.jar
           if-no-files-found: warn
 

@@ -42,7 +42,6 @@ public final class FallDapHandler {
     private static final Map<UUID, FallDapState> fallDapPlayers = new HashMap<>();
     private static final Map<UUID, Long> fallChargeStartTime = new HashMap<>();
     private static final Map<UUID, Long> squashedPlayers = new HashMap<>();
-    private static final long SQUASHED_DURATION_MS = 25000;
     private static final Map<UUID, Double> fallStartY = new HashMap<>();
     private static final double REQUIRED_FALL_BLOCKS = 20.0;
     private static final long FALL_CHARGE_DURATION_MS = 750;
@@ -112,7 +111,7 @@ public final class FallDapHandler {
                     else { cleanup(playerId); PoseNetworking.broadcastAnimState(player, 0); }
                 }
             } else if (currentState == FallDapState.FALLING) {
-                ServerPlayer victim = findSquashTarget(player, 3.0);
+                ServerPlayer victim = CoopMovesConfig.get().enableSquash ? findSquashTarget(player, 3.0) : null;
                 if (victim != null) {
                     squashPlayer(player, victim);
                     cleanup(playerId);
@@ -159,26 +158,31 @@ public final class FallDapHandler {
     }
 
     private static void squashPlayer(ServerPlayer attacker, ServerPlayer victim) {
+        CoopMovesConfig cfg = CoopMovesConfig.get();
         ServerLevel world = attacker.serverLevel();
         Vec3 pos = victim.position();
         world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 2.0f, 0.5f);
         world.playSound(null, pos.x, pos.y, pos.z, SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 1.0f, 0.8f);
         world.sendParticles(ParticleTypes.CRIT, pos.x, pos.y + 1, pos.z, 30, 0.5, 0.3, 0.5, 0.2);
         world.sendParticles(ParticleTypes.SMOKE, pos.x, pos.y, pos.z, 20, 0.5, 0.2, 0.5, 0.05);
-        dropHandItems(victim, world, pos);
-        victim.hurt(world.damageSources().playerAttack(attacker), 10.0f);
-        victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 420, 2, false, false));
-        victim.addEffect(new MobEffectInstance(MobEffects.JUMP, 420, 250, false, false));
-        victim.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 300, 0, false, false));
+        if (cfg.squashDropsItems) dropHandItems(victim, world, pos);
+        victim.hurt(world.damageSources().playerAttack(attacker), Math.max(0.0f, cfg.squashDamage));
+        int squashTicks = Math.max(1, cfg.squashDurationSec) * 20;
+        int nauseaTicks = Math.max(0, cfg.squashNauseaSec) * 20;
+        victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, squashTicks, 2, false, false));
+        victim.addEffect(new MobEffectInstance(MobEffects.JUMP, squashTicks, 250, false, false));
+        if (nauseaTicks > 0)
+            victim.addEffect(new MobEffectInstance(MobEffects.CONFUSION, nauseaTicks, 0, false, false));
         victim.setDeltaMovement(0, 0, 0);
         victim.hurtMarked = true;
-        squashedPlayers.put(victim.getUUID(), System.currentTimeMillis() + SQUASHED_DURATION_MS);
+        squashedPlayers.put(victim.getUUID(), System.currentTimeMillis() + squashTicks * 50L);
         MinecraftServer server = world.getServer();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             CoopNetwork.sendToPlayer(p, new SquashAnimMsg(victim.getUUID()));
         }
         attacker.displayClientMessage(Component.literal("§c§l💀 SQUASHED! 💀"), true);
-        victim.displayClientMessage(Component.literal("§c§lYOU GOT SQUASHED FOR 25 SECONDS!"), true);
+        victim.displayClientMessage(Component.literal("§c§lYOU GOT SQUASHED FOR "
+                + Math.max(1, cfg.squashDurationSec) + " SECONDS!"), true);
     }
 
     private static void dropHandItems(ServerPlayer player, ServerLevel world, Vec3 pos) {

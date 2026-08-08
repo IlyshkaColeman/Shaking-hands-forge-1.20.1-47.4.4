@@ -59,6 +59,7 @@ public class CoopAnimationHandler {
     public static final ResourceLocation CATCH_ANIM = id("catch");
     public static final ResourceLocation MAHITO_ANIM = id("mahito");
     public static final ResourceLocation HIGHFIVE_START_ANIM = id("highfive_start");
+    public static final ResourceLocation HIGHFIVE_WAIT_ANIM = id("highfive_wait");
     public static final ResourceLocation HIGHFIVE_END_ANIM = id("highfive_end");
     public static final ResourceLocation HIGHFIVE_HIT_ANIM = id("highfive_hit");
     public static final ResourceLocation HIGHFIVE_HIT_COMBO_ANIM = id("highfive_hitcombo");
@@ -450,6 +451,48 @@ public class CoopAnimationHandler {
         }
     }
 
+    /**
+     * Keeps the held-G dap pose alive for long charges. The short start animation
+     * naturally transitions into an idle pose, but long fire/mega charges can outlive
+     * the underlying KosmX player. While the key is still held, re-apply only when the
+     * state switched modes or the animation layer has gone inactive, so the pose does
+     * not visibly restart every tick.
+     */
+    public static void keepDapChargeHeld(Player player, boolean fireMode) {
+        if (!initialized) return;
+        if (!(player instanceof AbstractClientPlayer clientPlayer)) return;
+        UUID playerId = player.getUUID();
+        AnimState state = animStates.getOrDefault(playerId, AnimState.NONE);
+        try {
+            if (!hasLayer(clientPlayer)) return;
+
+            if (fireMode) {
+                if (state != AnimState.FIRE_DAP_CHARGING && state != AnimState.FIRE_DAP_CHARGE_IDLE) {
+                    CoopAnim.play(clientPlayer, FIRE_DAP_CHARGE_IDLE_ANIM);
+                    syncAnimState(playerId, AnimState.FIRE_DAP_CHARGE_IDLE);
+                    if (isLocal(playerId)) FirstPersonAnimationTest.showBothHands();
+                    return;
+                }
+                if (state == AnimState.FIRE_DAP_CHARGE_IDLE && !CoopAnim.isActive(clientPlayer)) {
+                    CoopAnim.play(clientPlayer, FIRE_DAP_CHARGE_IDLE_ANIM);
+                    if (isLocal(playerId)) FirstPersonAnimationTest.showBothHands();
+                }
+            } else {
+                if (state != AnimState.DAP_CHARGING && state != AnimState.DAP_CHARGE_IDLE
+                        && state != AnimState.FIRE_DAP_CHARGING && state != AnimState.FIRE_DAP_CHARGE_IDLE) {
+                    CoopAnim.play(clientPlayer, DAP_CHARGE_IDLE_ANIM);
+                    syncAnimState(playerId, AnimState.DAP_CHARGE_IDLE);
+                    if (isLocal(playerId)) FirstPersonAnimationTest.playDapCharge();
+                    return;
+                }
+                if (state == AnimState.DAP_CHARGE_IDLE && !CoopAnim.isActive(clientPlayer)) {
+                    CoopAnim.play(clientPlayer, DAP_CHARGE_IDLE_ANIM);
+                    if (isLocal(playerId)) FirstPersonAnimationTest.playDapCharge();
+                }
+            }
+        } catch (Exception ignored) { }
+    }
+
     public static void cancelDapCharge(Player player) {
         if (!initialized) return;
         if (!(player instanceof AbstractClientPlayer clientPlayer)) return;
@@ -531,6 +574,13 @@ public class CoopAnimationHandler {
                             else animStates.put(playerId, AnimState.DAP_CHARGE_IDLE);
                         }
                     }
+                    case FIRE_DAP_CHARGING -> {
+                        if (startTime != null && currentTime - startTime >= DAP_CHARGE_DURATION_TICKS) {
+                            CoopAnim.play(clientPlayer, FIRE_DAP_CHARGE_IDLE_ANIM);
+                            if (isLocalPlayer) syncAnimState(playerId, AnimState.FIRE_DAP_CHARGE_IDLE);
+                            else animStates.put(playerId, AnimState.FIRE_DAP_CHARGE_IDLE);
+                        }
+                    }
                     case GRAB_READY -> {
                         if (startTime != null && currentTime - startTime >= GRAB_READY_DURATION_TICKS) {
                             CoopAnim.play(clientPlayer, GRAB_READY_IDLE_ANIM);
@@ -561,8 +611,16 @@ public class CoopAnimationHandler {
                             expire(clientPlayer, playerId, isLocalPlayer, startTime, currentTime, DAP_HIT_DURATION_TICKS, false);
                     case FIRE_DAP_HIT ->
                             expire(clientPlayer, playerId, isLocalPlayer, startTime, currentTime, FIRE_DAP_HIT_DURATION_TICKS, false);
-                    case HIGHFIVE_START ->
-                            expire(clientPlayer, playerId, isLocalPlayer, startTime, currentTime, HIGHFIVE_START_DURATION_TICKS, false);
+                    case HIGHFIVE_START -> {
+                        if (startTime != null && currentTime - startTime >= HIGHFIVE_START_DURATION_TICKS) {
+                            CoopAnim.play(clientPlayer, HIGHFIVE_WAIT_ANIM);
+                            chargeStartTime.remove(playerId);
+                            if (isLocalPlayer) FirstPersonAnimationTest.playHighFiveStart();
+                        } else if (startTime == null && !CoopAnim.isActive(clientPlayer)) {
+                            CoopAnim.play(clientPlayer, HIGHFIVE_WAIT_ANIM);
+                            if (isLocalPlayer) FirstPersonAnimationTest.playHighFiveStart();
+                        }
+                    }
                     case HIGHFIVE_END ->
                             expire(clientPlayer, playerId, isLocalPlayer, startTime, currentTime, HIGHFIVE_END_DURATION_TICKS, false);
                     case HIGHFIVE_HIT ->
@@ -725,7 +783,7 @@ public class CoopAnimationHandler {
     }
 
     public static void playHighFiveStart(Player player) {
-        simplePlay(player, HIGHFIVE_START_ANIM, AnimState.HIGHFIVE_START, false, FirstPersonAnimationTest::playHighFiveStart);
+        simplePlay(player, HIGHFIVE_START_ANIM, AnimState.HIGHFIVE_START, true, FirstPersonAnimationTest::playHighFiveStart);
     }
 
     public static void playHighFiveEnd(Player player) {
@@ -1021,7 +1079,7 @@ public class CoopAnimationHandler {
                 long t = client.level.getGameTime();
                 switch (state) {
                     case DAP_HIT, FIRE_DAP_HIT, PERFECT_DAP_HIT,
-                         HIGHFIVE_END, HIGHFIVE_HIT, HIGHFIVE_HUG, HIGHFIVE_HUG2,
+                         HIGHFIVE_START, HIGHFIVE_END, HIGHFIVE_HIT, HIGHFIVE_HUG, HIGHFIVE_HUG2,
                          MARIO_JUMP, POP, DAP_DOWN,
                          CLAP, CLAP_SPAM, CLAP_STRONG,
                          FUSION_HIT_P1, FUSION_HIT_P2,

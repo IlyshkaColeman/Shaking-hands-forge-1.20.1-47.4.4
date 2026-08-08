@@ -47,9 +47,8 @@ public final class GroundPoundClientHandler {
         if (mc.player == null || mc.options.hideGui) return;
         long elapsed = System.currentTimeMillis() - diveStartMs;
         int a = Math.min(220, (int) (elapsed / 8)) << 24;
-        String label = "⬇ GROUND POUND";
-        int lx = (sw - mc.font.width(label)) / 2;
-        g.drawString(mc.font, Component.literal("§c§l" + label), lx, sh / 2 - 30, a | 0xFFFFFF, true);
+        HudTextRenderer.drawCenterImpact(g, "GROUND POUND", sw / 2, sh / 2 - 30,
+                a | 0xFFFFFF, a | 0xFF2200);
     }
 
     public static boolean isLocalPlayerDiving() { return localDiving; }

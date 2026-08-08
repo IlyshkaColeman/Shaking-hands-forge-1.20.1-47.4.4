@@ -13,7 +13,9 @@ import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -32,6 +34,7 @@ public final class DivineFlamCombo {
     private static final Map<UUID, Long> comboWindowStart = new HashMap<>();
     private static final Map<UUID, UUID> comboPartner = new HashMap<>();
     private static final Map<UUID, Long> comboFreezeEnd = new HashMap<>();
+    private static final Set<UUID> comboPressed = new HashSet<>();
     private static final long COMBO_WINDOW_MS = 1460;
     private static final long COMBO_FREEZE_MS = 3800;
 
@@ -44,6 +47,8 @@ public final class DivineFlamCombo {
         comboWindowStart.put(id2, now);
         comboPartner.put(id1, id2);
         comboPartner.put(id2, id1);
+        comboPressed.remove(id1);
+        comboPressed.remove(id2);
         PoseNetworking.broadcastAnimState(p1, 36);
         PoseNetworking.broadcastAnimState(p2, 36);
         comboFreezeEnd.put(id1, now + COMBO_WINDOW_MS);
@@ -70,7 +75,10 @@ public final class DivineFlamCombo {
         ServerPlayer partner = player.getServer().getPlayerList().getPlayer(partnerId);
         if (partner == null) return;
         if (!comboWindowStart.containsKey(partnerId)) return;
-        executeCombo(player, partner);
+        comboPressed.add(playerId);
+        if (comboPressed.contains(partnerId)) {
+            executeCombo(player, partner);
+        }
     }
 
     private static void executeCombo(ServerPlayer p1, ServerPlayer p2) {
@@ -80,6 +88,8 @@ public final class DivineFlamCombo {
         comboWindowStart.remove(id2);
         comboPartner.remove(id1);
         comboPartner.remove(id2);
+        comboPressed.remove(id1);
+        comboPressed.remove(id2);
         comboFreezeEnd.put(id1, now + COMBO_FREEZE_MS);
         comboFreezeEnd.put(id2, now + COMBO_FREEZE_MS);
         PoseNetworking.broadcastAnimState(p1, 37);
@@ -124,6 +134,7 @@ public final class DivineFlamCombo {
             if (now - entry.getValue() > COMBO_WINDOW_MS) {
                 UUID id = entry.getKey();
                 comboPartner.remove(id);
+                comboPressed.remove(id);
                 ServerPlayer player = server.getPlayerList().getPlayer(id);
                 if (player != null) PoseNetworking.broadcastAnimState(player, 0);
                 return true;
@@ -144,6 +155,7 @@ public final class DivineFlamCombo {
         comboWindowStart.remove(playerId);
         comboPartner.remove(playerId);
         comboFreezeEnd.remove(playerId);
+        comboPressed.remove(playerId);
     }
 
     public static boolean isInComboFreeze(UUID playerId) {

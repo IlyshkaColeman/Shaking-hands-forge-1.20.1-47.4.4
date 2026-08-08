@@ -1,6 +1,7 @@
 package com.cooptest.client;
 
 import com.cooptest.CoopMoves;
+import com.cooptest.CoopMovesConfig;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonConfiguration;
 import dev.kosmx.playerAnim.api.firstPerson.FirstPersonMode;
 import dev.kosmx.playerAnim.api.layered.IAnimation;
@@ -67,7 +68,7 @@ public final class CoopAnim {
     private static final Set<String> FP_RIGHT = Set.of(
             "dap_charge", "dap_charge_idle", "dap_hit", "dap_hit_weak", "dap_hit_bad", "dap_hit_face",
             "dap_high", "dapping", "dapping_end", "dap_down", "dap_loop", "dap_loop_end",
-            "highfive_start", "highfive_hit", "highfive_dap",
+            "highfive_start", "highfive_wait", "highfive_hit", "highfive_dap",
             "perfect_dap_hit", "perfect_dap_hitp1", "perfect_dap_hitp2",
             "perfect_dap_extandp1", "perfect_dap_extandp2",
             "perfect_dap_extande_myboyp1", "perfect_dap_extande_myboyp2", "perfect_dap_extand_both",
@@ -123,7 +124,8 @@ public final class CoopAnim {
             return;
         }
         String path = animId.getPath();
-        FirstPersonMode mode = isFp(path) ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
+        FirstPersonMode mode = CoopMovesConfig.get().enableFirstPersonAnimations && isFp(path)
+                ? FirstPersonMode.THIRD_PERSON_MODEL : FirstPersonMode.NONE;
         layer.setAnimation(new FpAnimationPlayer(anim, mode, fpConfig(path)));
         if (!loggedFirstPlay) {
             loggedFirstPlay = true;
@@ -135,5 +137,11 @@ public final class CoopAnim {
     public static void stop(AbstractClientPlayer player) {
         ModifierLayer<IAnimation> layer = getLayer(player);
         if (layer != null) layer.setAnimation(null);
+    }
+
+    /** True while the KosmX layer still has an active animation player. */
+    public static boolean isActive(AbstractClientPlayer player) {
+        ModifierLayer<IAnimation> layer = getLayer(player);
+        return layer != null && layer.isActive();
     }
 }

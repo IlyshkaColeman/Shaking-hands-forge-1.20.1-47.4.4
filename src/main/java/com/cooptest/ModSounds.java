@@ -50,6 +50,12 @@ public class ModSounds {
     public static final RegistryObject<SoundEvent> CLAP_4           = reg("clap4");
     public static final RegistryObject<SoundEvent> CLAP_5           = reg("clap5");
     public static final RegistryObject<SoundEvent> CLAP_6           = reg("clap6");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_IGNITE     = reg("fire_charge_ignite");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_RUMBLE     = reg("fire_charge_rumble");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_LAVA       = reg("fire_charge_lava");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_VOLCANO    = reg("fire_charge_volcano");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_WHOOSH     = reg("fire_charge_whoosh");
+    public static final RegistryObject<SoundEvent> FIRE_CHARGE_RISER_BOOM = reg("fire_charge_riser_boom");
 
     /** Equivalent of the Fabric CLAP_SOUNDS array (resolved SoundEvents). */
     public static SoundEvent[] clapSounds() {

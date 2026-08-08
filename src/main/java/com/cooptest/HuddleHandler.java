@@ -102,7 +102,8 @@ public final class HuddleHandler {
         public static HuddleFHoldMsg decode(FriendlyByteBuf buf) { return new HuddleFHoldMsg(buf.readBoolean()); }
         public static void handle(HuddleFHoldMsg m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();
-            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null) onFHold(p, m.holding()); });
+            c.enqueueWork(() -> { ServerPlayer p = c.getSender(); if (p != null
+                    && CoopMovesConfig.get().enableHug) onFHold(p, m.holding()); });
             c.setPacketHandled(true);
         }
     }

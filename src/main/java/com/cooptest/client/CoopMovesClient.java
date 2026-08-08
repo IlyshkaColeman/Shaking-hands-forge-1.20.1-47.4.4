@@ -28,6 +28,7 @@ public final class CoopMovesClient {
 
             // Animation state machine (client tick hook)
             CoopAnimationHandler.register();
+            ClientMovementHandler.register();
 
             // Stage 4 (Grab group): client input + juice
             GrabInputHandler.register();
@@ -39,8 +40,15 @@ public final class CoopMovesClient {
             // Stage 4 (self-contained mechanics)
             MarioJumpClientHandler.register();
             SitClientHandler.register();
+            PushClientHandler.register();
+            CatchClientHandler.register();
+            MahitoClientHandler.register();
+            FallDapClientHandler.register();
+            SlapClientHandler.register();
             // Stage 4 (Dap family): charge (G) / fire-combo (J) input
             ChargedDapClientHandler.register();
+            DapHoldClientHandler.register();
+            DivineFlamComboClient.register();
             // Stage 4 (HighFive-hug group): hold-to-hug (F) input
             HugClientHandler.register();
             // Stage 4 (Huddle group): group F-hold input
@@ -75,12 +83,16 @@ public final class CoopMovesClient {
     @SubscribeEvent
     public static void onRegisterOverlays(final RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("dap_hud", ChargedDapClientHandler.HUD);
+        event.registerAboveAll("high_five_hud", HighFiveClientHandler.HUD);
+        event.registerAboveAll("qte_hud", QTEClientHandler.HUD);
+        event.registerAboveAll("fusion_hud", FusionClientHandler.HUD);
         event.registerAboveAll("sync_dap_hud", SyncDapClientHandler.HUD);
         event.registerAboveAll("ground_pound_hud", GroundPoundClientHandler.HUD);
         event.registerAboveAll("heaven_white_overlay", HeavenWhiteOverlay.HUD);
         event.registerAboveAll("spin_hud", SpinClientHandler.HUD);
         event.registerAboveAll("meteor_hud", MeteorStrikeClientHandler.HUD);
         event.registerAboveAll("kick_hit_flash", KickClientHandler.HUD);
+        event.registerAboveAll("mechanic_text", MechanicHudTextClient.HUD);
     }
 
     /** Impact-silhouette core shaders (mod event bus, client dist). */

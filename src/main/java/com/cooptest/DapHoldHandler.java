@@ -312,9 +312,7 @@ public final class DapHoldHandler {
             final Vec3 centerFinal = center;
             final ServerLevel worldFinal = world;
             final int mc = memberCount;
-            new Thread(() -> {
-                try { Thread.sleep(1670); } catch (InterruptedException ignored) {}
-                server.execute(() -> {
+            ServerTaskScheduler.scheduleMillis(server, 1670, () -> {
                     for (ServerPlayer p : allFinal) {
                         if (!p.isAlive()) continue;
                         p.setDeltaMovement(p.getDeltaMovement().add(0, 0.4 + mc * 0.1, 0));
@@ -332,8 +330,7 @@ public final class DapHoldHandler {
                     worldFinal.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centerFinal.x, centerFinal.y + 1, centerFinal.z, mc, 0.4, 0.3, 0.4, 0);
                     worldFinal.playSound(null, centerFinal.x, centerFinal.y, centerFinal.z, ModSounds.EPIC_DAP.get(), SoundSource.PLAYERS, 1.5f, 0.9f + mc * 0.05f);
                     worldFinal.playSound(null, centerFinal.x, centerFinal.y, centerFinal.z, SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, SoundSource.PLAYERS, 1.2f, 0.8f);
-                });
-            }).start();
+            });
         } else {
             for (ServerPlayer p : all) {
                 Vec3 dir = p.position().subtract(center).normalize();
@@ -525,6 +522,25 @@ public final class DapHoldHandler {
 
     public static boolean isInDapHold(UUID playerId) {
         return activePairs.containsKey(playerId) || activePairs.containsValue(playerId) || joinerGroup.containsKey(playerId);
+    }
+
+    /** Clears a pair or group membership when a player dies, respawns or disconnects. */
+    public static void cleanup(UUID playerId, MinecraftServer server) {
+        UUID hfId = getPairHfId(playerId);
+        if (hfId != null) {
+            cleanupPair(hfId, server);
+            return;
+        }
+        UUID groupId = joinerGroup.remove(playerId);
+        joinerJLast.remove(playerId);
+        if (groupId != null) {
+            Set<UUID> members = groupJoiners.get(groupId);
+            if (members != null) {
+                members.remove(playerId);
+                if (members.isEmpty()) groupJoiners.remove(groupId);
+            }
+        }
+        sendFreeze(server, playerId, false);
     }
 
     // ------------------------------------------------------------------ networking

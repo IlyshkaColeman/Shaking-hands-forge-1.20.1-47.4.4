@@ -1,6 +1,7 @@
 package com.cooptest.client;
 
 import com.cooptest.ArmPoseTracker;
+import com.cooptest.CoopMoves;
 import com.cooptest.PoseNetworking;
 import com.cooptest.PoseState;
 import net.minecraft.client.Minecraft;
@@ -33,6 +34,10 @@ public final class ClientPoseHandlers {
     }
 
     public static void onPoseSync(UUID id, int poseOrdinal) {
+        if (poseOrdinal < 0 || poseOrdinal >= PoseState.values().length) {
+            CoopMoves.LOGGER.warn("Ignoring invalid pose ordinal {} from server", poseOrdinal);
+            return;
+        }
         PoseState state = PoseState.values()[poseOrdinal];
         PoseNetworking.poseStates.put(id, state);
         Player player = findPlayer(id);
@@ -50,6 +55,10 @@ public final class ClientPoseHandlers {
     }
 
     public static void onAnimStateSync(UUID id, int animState) {
+        if (animState < 0 || animState >= CoopAnimationHandler.AnimState.values().length) {
+            CoopMoves.LOGGER.warn("Ignoring invalid animation ordinal {} from server", animState);
+            return;
+        }
         if (animState == 0) {
             ChargedDapClientHandler.cleanup(id);
             CoopAnimationHandler.cleanup(id);

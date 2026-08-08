@@ -240,11 +240,7 @@ public final class DapFusionHandler {
     }
 
     private static void scheduleWalkQTE(FusionSession s) {
-        new Thread(() -> {
-            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            if (s.p1Ref.getServer() == null) return;
-            s.p1Ref.getServer().execute(() -> openWalkQTE(s));
-        }).start();
+        ServerTaskScheduler.scheduleMillis(s.p1Ref.getServer(), 300, () -> openWalkQTE(s));
     }
 
     private static void openWalkQTE(FusionSession s) {
@@ -316,11 +312,8 @@ public final class DapFusionHandler {
         if (s.walkStage >= 3) {
             PoseNetworking.broadcastAnimState(s.p1Ref, ANIM_FUSION_START_P1);
             PoseNetworking.broadcastAnimState(s.p2Ref, ANIM_FUSION_START_P2);
-            new Thread(() -> {
-                try { Thread.sleep(SMOOTH_TP_TICKS * 50 + 420L); } catch (InterruptedException ignored) {}
-                if (s.p1Ref.getServer() == null) return;
-                s.p1Ref.getServer().execute(() -> triggerMeetupExplosion(s));
-            }).start();
+            ServerTaskScheduler.scheduleMillis(s.p1Ref.getServer(), SMOOTH_TP_TICKS * 50L + 420L,
+                    () -> triggerMeetupExplosion(s));
         } else {
             scheduleWalkQTE(s);
         }
@@ -351,10 +344,7 @@ public final class DapFusionHandler {
         if (s.phase != FusionPhase.WALK_QTE) return;
         PoseNetworking.broadcastAnimState(s.p1Ref, ANIM_FUSION_HIT_P1);
         PoseNetworking.broadcastAnimState(s.p2Ref, ANIM_FUSION_HIT_P2);
-        new Thread(() -> {
-            try { Thread.sleep(350); } catch (InterruptedException ignored) {}
-            if (s.p1Ref.getServer() == null) return;
-            s.p1Ref.getServer().execute(() -> {
+        ServerTaskScheduler.scheduleMillis(s.p1Ref.getServer(), 350, () -> {
                 if (s.phase == FusionPhase.WALK_QTE) {
                     Vec3 mid = s.p1Ref.position().add(s.p2Ref.position()).scale(0.5).add(0, 1, 0);
                     s.world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, mid.x, mid.y, mid.z, 60, 0.8, 0.8, 0.8, 0.3);
@@ -363,12 +353,8 @@ public final class DapFusionHandler {
                     s.world.playSound(null, mid.x, mid.y, mid.z, ModSounds.EPIC_DAP.get(), SoundSource.PLAYERS, 3.0f, 0.8f);
                     s.world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 2.0f, 0.6f);
                 }
-            });
-        }).start();
-        new Thread(() -> {
-            try { Thread.sleep(620); } catch (InterruptedException ignored) {}
-            if (s.p1Ref.getServer() == null) return;
-            s.p1Ref.getServer().execute(() -> {
+        });
+        ServerTaskScheduler.scheduleMillis(s.p1Ref.getServer(), 620, () -> {
                 if (s.phase != FusionPhase.WALK_QTE) return;
                 broadcastServer(s, "§6§l⚡ THE FUSION BEGINS! ⚡ §7Complete the 10-stage QTE!");
                 s.phase = FusionPhase.FUSION_QTE;
@@ -378,8 +364,7 @@ public final class DapFusionHandler {
                 PoseNetworking.broadcastAnimState(s.p1Ref, ANIM_FUSION_IDLE_P1);
                 PoseNetworking.broadcastAnimState(s.p2Ref, ANIM_FUSION_IDLE_P2);
                 openNextFusionQTE(s);
-            });
-        }).start();
+        });
     }
 
     private static void openNextFusionQTE(FusionSession s) {
@@ -443,12 +428,8 @@ public final class DapFusionHandler {
             if (s.fusionStage >= 10) {
                 triggerFusion(s);
             } else {
-                ServerPlayer p1 = s.p1Ref;
-                new Thread(() -> {
-                    try { Thread.sleep(FUSION_STAGE_GAP_MS); } catch (InterruptedException ignored) {}
-                    if (p1.getServer() == null) return;
-                    p1.getServer().execute(() -> openNextFusionQTE(s));
-                }).start();
+                ServerTaskScheduler.scheduleMillis(s.p1Ref.getServer(), FUSION_STAGE_GAP_MS,
+                        () -> openNextFusionQTE(s));
             }
         }
     }
@@ -498,50 +479,45 @@ public final class DapFusionHandler {
         CoopNetwork.sendToPlayer(s.p2Ref, new FusionBlackScreenMsg(true));
         broadcast(s, new FusionPhaseMsg(s.p1Id, s.p2Id, 3));
         Vec3 mid = s.p1Ref.position().add(s.p2Ref.position()).scale(0.5);
-        new Thread(() -> {
-            try {
-                s.p1Ref.getServer().execute(() -> {
-                    if (!CoopMovesConfig.get().noGriefMode) {
-                        float power = 10.0f;
-                        for (int dx = -8; dx <= 8; dx += 8) {
-                            for (int dz = -8; dz <= 8; dz += 8) {
-                                s.world.explode(null, mid.x + dx, mid.y, mid.z + dz, power, true, Level.ExplosionInteraction.MOB);
-                            }
-                        }
-                    } else {
-                        s.world.explode(null, mid.x, mid.y, mid.z, 10.0f, false, Level.ExplosionInteraction.MOB);
-                    }
-                    s.p1Ref.setDeltaMovement(Vec3.ZERO);
-                    s.p2Ref.setDeltaMovement(Vec3.ZERO);
-                    s.p1Ref.hurtMarked = true;
-                    s.p2Ref.hurtMarked = true;
-                });
-                for (int i = 0; i < 10; i++) {
-                    Thread.sleep(500);
-                    final int burst = i;
-                    if (s.p1Ref.getServer() == null) return;
-                    s.p1Ref.getServer().execute(() -> {
-                        float spread = 3.0f + burst * 1.5f;
-                        int count = 60 + burst * 20;
-                        for (int p = 0; p < 5; p++) {
-                            double ox = (Math.random() - 0.5) * spread * 2;
-                            double oz = (Math.random() - 0.5) * spread * 2;
-                            double oy = Math.random() * 4;
-                            s.world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, mid.x + ox, mid.y + oy, mid.z + oz, 1, 0, 0, 0, 0);
-                        }
-                        s.world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, mid.x, mid.y + 2, mid.z, count, spread, spread, spread, 0.5);
-                        s.world.sendParticles(ParticleTypes.ELECTRIC_SPARK, mid.x, mid.y + 2, mid.z, count / 2, spread * 0.8, spread * 0.8, spread * 0.8, 0.6);
-                        s.world.sendParticles(ParticleTypes.DRAGON_BREATH, mid.x, mid.y + 1, mid.z, count / 3, spread, spread, spread, 0.3);
-                        s.world.sendParticles(ParticleTypes.END_ROD, mid.x, mid.y + 1, mid.z, count / 2, spread, spread, spread, 0.4);
-                        s.world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 2.0f, 0.4f + (float) (Math.random() * 0.4f));
-                        if (burst % 3 == 0) {
-                            s.world.playSound(null, mid.x, mid.y, mid.z, ModSounds.EPIC_DAP.get(), SoundSource.PLAYERS, 2.5f, 0.6f);
-                        }
-                    });
+        MinecraftServer server = s.p1Ref.getServer();
+        if (!CoopMovesConfig.get().noGriefMode) {
+            float power = 10.0f;
+            for (int dx = -8; dx <= 8; dx += 8) {
+                for (int dz = -8; dz <= 8; dz += 8) {
+                    s.world.explode(null, mid.x + dx, mid.y, mid.z + dz, power, true, Level.ExplosionInteraction.MOB);
                 }
-            } catch (InterruptedException ignored) {}
-            if (s.p1Ref.getServer() == null) return;
-            s.p1Ref.getServer().execute(() -> {
+            }
+        } else {
+            s.world.explode(null, mid.x, mid.y, mid.z, 10.0f, false, Level.ExplosionInteraction.MOB);
+        }
+        s.p1Ref.setDeltaMovement(Vec3.ZERO);
+        s.p2Ref.setDeltaMovement(Vec3.ZERO);
+        s.p1Ref.hurtMarked = true;
+        s.p2Ref.hurtMarked = true;
+
+        for (int i = 0; i < 10; i++) {
+            final int burst = i;
+            ServerTaskScheduler.scheduleMillis(server, (i + 1L) * 500L, () -> {
+                float spread = 3.0f + burst * 1.5f;
+                int count = 60 + burst * 20;
+                for (int p = 0; p < 5; p++) {
+                    double ox = (Math.random() - 0.5) * spread * 2;
+                    double oz = (Math.random() - 0.5) * spread * 2;
+                    double oy = Math.random() * 4;
+                    s.world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, mid.x + ox, mid.y + oy, mid.z + oz, 1, 0, 0, 0, 0);
+                }
+                s.world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, mid.x, mid.y + 2, mid.z, count, spread, spread, spread, 0.5);
+                s.world.sendParticles(ParticleTypes.ELECTRIC_SPARK, mid.x, mid.y + 2, mid.z, count / 2, spread * 0.8, spread * 0.8, spread * 0.8, 0.6);
+                s.world.sendParticles(ParticleTypes.DRAGON_BREATH, mid.x, mid.y + 1, mid.z, count / 3, spread, spread, spread, 0.3);
+                s.world.sendParticles(ParticleTypes.END_ROD, mid.x, mid.y + 1, mid.z, count / 2, spread, spread, spread, 0.4);
+                s.world.playSound(null, mid.x, mid.y, mid.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 2.0f, 0.4f + (float) (Math.random() * 0.4f));
+                if (burst % 3 == 0) {
+                    s.world.playSound(null, mid.x, mid.y, mid.z, ModSounds.EPIC_DAP.get(), SoundSource.PLAYERS, 2.5f, 0.6f);
+                }
+            });
+        }
+
+        ServerTaskScheduler.scheduleMillis(server, 5000L, () -> {
                 s.world.sendParticles(ParticleTypes.FLASH, mid.x, mid.y + 1, mid.z, 20, 0, 0, 0, 0);
                 s.world.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, mid.x, mid.y + 1, mid.z, 200, 4, 4, 4, 0.6);
                 s.world.sendParticles(ParticleTypes.EXPLOSION_EMITTER, mid.x, mid.y + 1, mid.z, 8, 3, 3, 3, 0);
@@ -552,7 +528,6 @@ public final class DapFusionHandler {
                 CoopNetwork.sendToPlayer(s.p1Ref, new FusionBlackScreenMsg(false));
                 CoopNetwork.sendToPlayer(s.p2Ref, new FusionBlackScreenMsg(false));
                 broadcast(s, new FusionPhaseMsg(s.p1Id, s.p2Id, 4));
-                MinecraftServer server = s.p1Ref.getServer();
                 for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                     p.displayClientMessage(Component.literal("§c§l☄ " + s.p1Ref.getName().getString()
                             + " §eand §c" + s.p2Ref.getName().getString()
@@ -562,8 +537,7 @@ public final class DapFusionHandler {
                 ServerPlayer freshP2 = server.getPlayerList().getPlayer(s.p2Id);
                 if (freshP1 != null && freshP2 != null) MeteorStrikeHandler.grantAbility(freshP1, freshP2);
                 silentCleanup(s);
-            });
-        }).start();
+        });
     }
 
     // ------------------------------------------------------------------ tick
@@ -794,7 +768,7 @@ public final class DapFusionHandler {
             b.writeLong(m.windowStartMs); b.writeLong(m.windowEndMs); b.writeBoolean(m.open); b.writeInt(m.type);
         }
         public static FusionQTEPayload decode(FriendlyByteBuf b) {
-            return new FusionQTEPayload(b.readUUID(), b.readUtf(), b.readInt(), b.readLong(), b.readLong(), b.readBoolean(), b.readInt());
+            return new FusionQTEPayload(b.readUUID(), b.readUtf(16), b.readInt(), b.readLong(), b.readLong(), b.readBoolean(), b.readInt());
         }
         public static void handle(FusionQTEPayload m, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context c = ctx.get();

@@ -30,6 +30,13 @@ logoFile="icon.png"
 [[dependencies.${mod_id}]]
     modId="playeranimator"
     mandatory=true
-    versionRange="[1.0,)"
+    versionRange="[1.0.2-rc1,1.1)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="bendylib"
+    mandatory=true
+    versionRange="[4.0.0,5.0.0)"
+    ordering="AFTER"
+    side="CLIENT"

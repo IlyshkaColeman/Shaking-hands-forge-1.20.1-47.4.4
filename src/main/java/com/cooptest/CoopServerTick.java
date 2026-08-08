@@ -2,6 +2,7 @@ package com.cooptest;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -16,10 +17,17 @@ public final class CoopServerTick {
     private CoopServerTick() {}
 
     @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        ServerTaskScheduler.clear(event.getServer());
+    }
+
+    @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         MinecraftServer server = event.getServer();
         if (server == null) return;
+
+        ServerTaskScheduler.tick(server);
 
         CoopMovesConfig cfg = CoopMovesConfig.get();
 
