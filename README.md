@@ -300,6 +300,3 @@ Forge 1.20.1 порт и дальнейшая доработка:
 Подробнее: [LICENSE](LICENSE).
 
 
-## 🟩 Shaking Hands на Modrinth
-
-[![Открыть мод на Modrinth](codex-clipboard-12f4823a-c441-4470-97a6-ba276b49ea50.png)](https://modrinth.com/mod/shaking-hands)
