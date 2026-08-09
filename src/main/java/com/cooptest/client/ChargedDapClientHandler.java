@@ -498,8 +498,13 @@ public final class ChargedDapClientHandler {
             }
         }
 
+        // Main classic charge bar. Keep it for Shift+G / fire charge, but hide it
+        // while regular G is using the synchronized timing UI.
+        boolean syncDapUiActive = syncEngaged || SyncDapClientHandler.isActive();
+
         // main charge bar
         if (localCharging && !onCooldown
+                && !syncDapUiActive
                 && (CoopMovesConfig.get().showDapChargeBar || CoopMovesConfig.get().showFireChargeBar)) {
             long elapsed = now - localChargeStartTime;
             float chargePercent = Math.min(1.0f, (float) elapsed / CHARGE_TIME_MS);

@@ -59,6 +59,8 @@ public final class GrabInputHandler {
     private static boolean isChargingThrow = false;
     private static long throwChargeStartTime = 0;
     private static final long MAX_CHARGE_TIME_MS = 1500;
+    private static final long ELYTRA_BOOST_RESEND_MS = 150;
+    private static long lastElytraBoostRequestTime = 0L;
     private static float lastSentChargeProgress = -1f;
 
     /** Called from CoopMovesClient on RegisterKeyMappingsEvent (mod bus, client). */
@@ -94,11 +96,12 @@ public final class GrabInputHandler {
 
         // --- Elytra boost: jump while thrown/airborne with an elytra equipped ---
         boolean isJumpPressed = client.options.keyJump.isDown();
-        if (isJumpPressed && !wasJumpPressed) {
-            if (pose == PoseState.GRABBED && !player.isPassenger()) {
-                if (player.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof ElytraItem) {
-                    GrabNetworking.sendElytraBoostRequest();
-                }
+        if (isJumpPressed && pose == PoseState.GRABBED && !player.isPassenger()
+                && player.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof ElytraItem) {
+            long now = System.currentTimeMillis();
+            if (!wasJumpPressed || now - lastElytraBoostRequestTime >= ELYTRA_BOOST_RESEND_MS) {
+                GrabNetworking.sendElytraBoostRequest();
+                lastElytraBoostRequestTime = now;
             }
         }
         wasJumpPressed = isJumpPressed;

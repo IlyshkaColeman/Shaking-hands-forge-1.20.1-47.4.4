@@ -92,9 +92,10 @@ public class GrabMechanic {
         }
     }
 
-    public static final HashMap<UUID, Boolean> elytraBoostRequests = new HashMap<>();
+    public static final HashMap<UUID, Long> elytraBoostRequests = new HashMap<>();
     public static final HashMap<UUID, float[]> airMovementInput = new HashMap<>();
     private static final double AIR_CONTROL_STRENGTH = 0.025;
+    private static final long ELYTRA_BOOST_REQUEST_WINDOW_MS = 2500L;
 
     private static void sendPassengerUpdate(MinecraftServer server, net.minecraft.world.entity.Entity vehicle) {
         ClientboundSetPassengersPacket packet = new ClientboundSetPassengersPacket(vehicle);
@@ -294,9 +295,12 @@ public class GrabMechanic {
                 player.hurtMarked = true;
             }
 
-            long timeSinceThrow = System.currentTimeMillis() - data.throwTimeMs;
+            long nowMs = System.currentTimeMillis();
+            long timeSinceThrow = nowMs - data.throwTimeMs;
             if (!data.elytraBoostUsed && timeSinceThrow < 2000) {
-                if (elytraBoostRequests.remove(playerId) != null) {
+                Long elytraRequestTime = elytraBoostRequests.get(playerId);
+                if (elytraRequestTime != null && nowMs - elytraRequestTime <= ELYTRA_BOOST_REQUEST_WINDOW_MS) {
+                    elytraBoostRequests.remove(playerId);
                     if (player.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof ElytraItem) {
                         Vec3 look = player.getViewVector(1.0f);
                         double boostStrength = 1.5;
@@ -318,6 +322,8 @@ public class GrabMechanic {
                         toRemove.add(playerId);
                         continue;
                     }
+                } else if (elytraRequestTime != null && nowMs - elytraRequestTime > ELYTRA_BOOST_REQUEST_WINDOW_MS) {
+                    elytraBoostRequests.remove(playerId);
                 }
             }
 
@@ -688,8 +694,8 @@ public class GrabMechanic {
     }
 
     public static void requestElytraBoost(UUID playerId) {
-        if (thrownPlayers.containsKey(playerId)) {
-            elytraBoostRequests.put(playerId, true);
+        if (thrownPlayers.containsKey(playerId) || pendingThrows.containsKey(playerId)) {
+            elytraBoostRequests.put(playerId, System.currentTimeMillis());
         }
     }
 
