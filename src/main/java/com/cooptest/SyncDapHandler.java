@@ -24,14 +24,13 @@ import java.util.function.Supplier;
  * Flow:
  *   1. A player holds G with an empty hand -> "waiting" (hand extended pose).
  *   2. A second player nearby & facing also holds G -> both engage: a marker
- *      ping-pongs up/down a shared bar on each client (client-side visual).
+ *      ping-pongs left/right across a shared horizontal timing bar.
  *   3. Each player releases G to lock their marker (0..100).
  *   4. When both have locked, the zones are compared:
- *        - both in the PERFECT cube  -> best dap
- *        - both in the MEDIUM band   -> medium dap
- *        - both outside (basic)      -> weak dap
- *        - different zones           -> FAIL: fart/miss sound, animation cancels,
- *                                        "You're shitting yourself" subtitle.
+ *        - gray zone or different zones -> FAIL: miss sound + "The loser failed"
+ *        - both yellow                  -> normal dap
+ *        - both green                   -> strong dap
+ *        - both red center              -> strongest dap + combo follow-up
  *
  * Gated by {@link CoopMovesConfig#enableSyncDap}. When on, the client routes G to
  * this system instead of the classic hold-to-charge dap.
@@ -52,15 +51,22 @@ public final class SyncDapHandler {
     private static final long HOLD_TIMEOUT_MS = 8000;
     private static final long LOCK_WAIT_MS = 2500;
 
-    // zone boundaries on the 0..100 bar (keep in sync with the client HUD)
-    public static final int PERFECT_MIN = 42, PERFECT_MAX = 58;
-    public static final int MEDIUM_MIN = 22, MEDIUM_MAX = 78;
+    // Horizontal zone boundaries on the 0..100 bar (keep in sync with the client HUD).
+    // gray | yellow | green | red | green | yellow | gray
+    public static final int LEFT_GRAY_MAX = 18;
+    public static final int LEFT_YELLOW_MAX = 30;
+    public static final int LEFT_GREEN_MAX = 44;
+    public static final int RED_MIN = 44, RED_MAX = 56;
+    public static final int RIGHT_GREEN_MAX = 70;
+    public static final int RIGHT_YELLOW_MAX = 82;
 
-    /** 2 = perfect cube, 1 = medium band, 0 = basic (outside). */
+    /** 0 = gray fail, 1 = yellow normal, 2 = green strong, 3 = red strongest. */
     public static int zoneOf(int marker) {
-        if (marker >= PERFECT_MIN && marker <= PERFECT_MAX) return 2;
-        if (marker >= MEDIUM_MIN && marker <= MEDIUM_MAX) return 1;
-        return 0;
+        if (marker < 0 || marker > 100) return 0;
+        if (marker < LEFT_GRAY_MAX || marker > RIGHT_YELLOW_MAX) return 0;
+        if (marker < LEFT_YELLOW_MAX || marker > RIGHT_GREEN_MAX) return 1;
+        if (marker < RED_MIN || marker > RED_MAX) return 2;
+        return 3;
     }
 
     // ---- state ----
@@ -200,6 +206,8 @@ public final class SyncDapHandler {
         int ma = locked.getOrDefault(ida, 0), mb = locked.getOrDefault(idb, 0);
         int za = zoneOf(ma), zb = zoneOf(mb);
         clearPair(ida, idb);
+        CoopNetwork.sendToPlayer(a, new SyncActiveMsg(false));
+        CoopNetwork.sendToPlayer(b, new SyncActiveMsg(false));
 
         // Face each other for the impact.
         Vec3 pa = a.position(), pb = b.position();
@@ -209,11 +217,11 @@ public final class SyncDapHandler {
         b.setYRot(yawA + 180f); b.setYBodyRot(yawA + 180f); b.setYHeadRot(yawA + 180f);
         a.swing(InteractionHand.MAIN_HAND); b.swing(InteractionHand.MAIN_HAND);
 
-        if (za != zb) { fail(a, b); return; }
+        if (za == 0 || zb == 0 || za != zb) { fail(a, b); return; }
         switch (za) {
+            case 3 -> impact(a, b, 3);
             case 2 -> impact(a, b, 2);
-            case 1 -> impact(a, b, 1);
-            default -> impact(a, b, 0);
+            default -> impact(a, b, 1);
         }
     }
 
@@ -225,22 +233,35 @@ public final class SyncDapHandler {
         world.sendParticles(ParticleTypes.SMOKE, mid.x, mid.y - 0.6, mid.z, 12, 0.2, 0.1, 0.2, 0.02);
         PoseNetworking.broadcastAnimState(a, ANIM_NONE);
         PoseNetworking.broadcastAnimState(b, ANIM_NONE);
-        MechanicHudText.warning(a, "SYNC FAILED", "markers missed");
-        MechanicHudText.warning(b, "SYNC FAILED", "markers missed");
+        MechanicHudText.warning(a, "THE LOSER FAILED", "timing missed");
+        MechanicHudText.warning(b, "THE LOSER FAILED", "timing missed");
     }
 
     private static void impact(ServerPlayer a, ServerPlayer b, int tier) {
         // Reuse the classic dap tier effects (particles, sounds, and — for the green
         // cube — the perfect-dap impact frames + silhouette shader).
-        ChargedDapHandler.runSyncDap(a, b, tier);
+        int classicTier = switch (tier) {
+            case 3 -> 2; // red center: perfect impact/shader
+            case 2 -> 1; // green: strong hit
+            default -> 0; // yellow: normal hit
+        };
+        ChargedDapHandler.runSyncDap(a, b, classicTier);
         switch (tier) {
+            case 3 -> {
+                Vec3 pos = a.position().add(b.position()).scale(0.5).add(0, 1.0, 0);
+                if (CoopMovesConfig.get().enableDapCombo) {
+                    DapComboChain.startCombo(a, b, pos);
+                }
+                MechanicHudText.send(a, "RED PERFECT DAP", "maximum impact", MechanicHudText.EPIC, 1650L);
+                MechanicHudText.send(b, "RED PERFECT DAP", "maximum impact", MechanicHudText.EPIC, 1650L);
+            }
             case 2 -> {
-                MechanicHudText.send(a, "PERFECT SYNC DAP", "marker snapped", MechanicHudText.EPIC, 1650L);
-                MechanicHudText.send(b, "PERFECT SYNC DAP", "marker snapped", MechanicHudText.EPIC, 1650L);
+                MechanicHudText.success(a, "GREEN POWER DAP", "strong hit");
+                MechanicHudText.success(b, "GREEN POWER DAP", "strong hit");
             }
             case 1 -> {
-                MechanicHudText.success(a, "GOOD SYNC DAP", "clean hit");
-                MechanicHudText.success(b, "GOOD SYNC DAP", "clean hit");
+                MechanicHudText.info(a, "YELLOW DAP", "clean clap");
+                MechanicHudText.info(b, "YELLOW DAP", "clean clap");
             }
             default -> {
                 MechanicHudText.info(a, "DAP", "connected");

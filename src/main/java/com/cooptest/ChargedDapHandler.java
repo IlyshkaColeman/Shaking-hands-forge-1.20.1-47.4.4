@@ -1125,7 +1125,7 @@ public final class ChargedDapHandler {
     /**
      * Entry point for the synchronized ping-pong dap ({@link SyncDapHandler}). Reuses the
      * classic tier effects so all particles, sounds and the perfect-dap impact shader fire.
-     * tier: 0 = basic (gray zone), 1 = medium (yellow), 2 = perfect (green cube).
+     * tier: 0 = normal/yellow, 1 = strong/green, 2 = perfect/red center.
      */
     public static void runSyncDap(ServerPlayer p1, ServerPlayer p2, int tier) {
         ServerLevel world = p1.serverLevel();
