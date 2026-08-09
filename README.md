@@ -14,6 +14,7 @@
 <br>
 
 [![Скачать мод](https://img.shields.io/badge/⬇%20Скачать%20мод-GitHub%20Releases-ff5a00?style=for-the-badge&logo=github)](https://github.com/IlyshkaColeman/Shaking-hands-forge-1.20.1-47.4.4/releases)
+[![Modrinth](https://img.shields.io/badge/Modrinth-Открыть-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/mod/shaking-hands)
 [![Поддержать автора](https://img.shields.io/badge/☕%20Поддержать%20автора-Boosty-ff6a00?style=for-the-badge)](https://boosty.to/coleman)
 
 </div>
