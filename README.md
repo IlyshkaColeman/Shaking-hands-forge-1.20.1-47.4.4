@@ -69,7 +69,7 @@ Shaking-hands-forge-1.20.1-47.4.4.jar
 
 Поддержка не обязательна, но очень помогает: на тесты, полировку механик, новые анимации, звуки, HUD и комбо. Если не хотите донатить, тоже всё нормально — звезда репозиторию, багрепорт или рассказ о моде друзьям тоже сильно помогают.
 
-Подробнее: [SUPPORT.md](SUPPORT.md).
+Подробнее: [SUPPORT.md](docs/SUPPORT.md).
 
 ---
 
@@ -265,9 +265,9 @@ build/libs/Shaking-hands-forge-1.20.1-47.4.4.jar
 
 Полезные файлы:
 
-- [CONTROLS_AND_MECHANICS.md](CONTROLS_AND_MECHANICS.md) — подробное управление и механики;
-- [COMBOS.md](COMBOS.md) — заметки по комбо;
-- [NEXT_STEPS.md](NEXT_STEPS.md) — что ещё стоит доработать.
+- [CONTROLS_AND_MECHANICS.md](docs/CONTROLS_AND_MECHANICS.md) — подробное управление и механики;
+- [COMBOS.md](docs/COMBOS.md) — заметки по комбо;
+- [NEXT_STEPS.md](docs/NEXT_STEPS.md) — что ещё стоит доработать.
 
 ---
 
