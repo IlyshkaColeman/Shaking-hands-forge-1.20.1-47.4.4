@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤝 Shaking Hands
+<img src="assets/shaking-hands-logo.png" alt="Shaking Hands" width="720">
 
 ### Кооперативный мод для Minecraft Forge 1.20.1
 
